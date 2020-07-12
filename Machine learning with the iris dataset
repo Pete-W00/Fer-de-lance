@@ -1,0 +1,82 @@
+# Machine learning with the iris dataset
+# Thank you to Edureka and Mosh Hamedani for providing guidance for this code in their YouTube videos
+
+
+# Setup:
+
+import seaborn as sns
+
+import pandas
+from pandas.plotting import scatter_matrix
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import sklearn
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+iris = sns.load_dataset("iris")
+
+
+# General analysis:
+
+iris.shape # 150 rows x 5 columns
+iris.describe() # General summary of dataset
+
+
+# Data visualisation
+
+# One variable:
+
+sepal_length_data = iris.sepal_length
+sepal_length_data.plot(kind = "box")
+
+# Two variables:
+
+x = iris.petal_length
+y = iris.petal_width
+
+plt.scatter(x, y, label = "setosa, verginica and versicolor", color = "g")
+plt.xlabel("Petal length")
+plt.ylabel("Petal Width")
+plt.title("Relationship between petal length and petal width")
+plt.legend()
+plt.show()
+
+# Multi-variable:
+
+scatter_matrix(iris)
+plt.show()
+
+
+# Machine learning
+
+# Split data:
+
+array = iris.values
+X = array[:, 0:4] # this excludes the species column
+y = array[:, 4]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
+
+# Create the model:
+
+model = KNeighborsClassifier() # other models can be used here (e.g. GaussianNB(), DecisionTreeClassifier() etc)
+model.fit(X_train, y_train) # 80% of the data is used for training
+
+# Use model:
+
+output1 = model.predict([[4.0, 3.0, 2.0, 1.0]]) # previously unseen dimensions
+print(output1) # 'setosa'
+
+output2 = model.predict([[7.0, 3.0, 5.0, 1.0]])
+print(output2) # 'versicolor'
+
+output3 = model.predict([[6.0, 3.0, 5.0, 2.0]])
+print(output3) # 'virginica' (NB: all three species have been outputted)
+
+# Testing the accuracy of the model:
+
+percentage_accuracy = accuracy_score(y_test, model.predict(X_test))*100
+print(percentage_accuracy) # returned 96.7% (1 d.p.)
