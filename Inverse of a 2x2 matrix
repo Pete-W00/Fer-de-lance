@@ -1,0 +1,11 @@
+#Working out the inverse of a 2x2 matrix
+
+import numpy
+import scipy
+from numpy import array
+from scipy import linalg
+
+
+A = array([[1,2],[3,4]])
+B = linalg.inv(A)
+print(B)
