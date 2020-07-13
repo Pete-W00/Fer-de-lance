@@ -1,0 +1,50 @@
+# Linear regression. 
+# Manually working out the equation of the regression line 
+# Data: petal length and width of the iris dataset
+
+
+import seaborn as sns
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import numpy
+from numpy import array
+
+import statistics
+from statistics import mean
+
+
+sns.get_dataset_names()
+iris = sns.load_dataset("iris")
+
+petal_length = iris.petal_length
+petal_width = iris.petal_width
+
+x_mean = mean(petal_length) # x_mean = 3.758
+y_mean = mean(petal_width) # y_mean = 1.1993333333333334
+
+difference1 = array(petal_length) - x_mean
+difference2 = array(petal_width) - y_mean
+difference3 = (array(petal_length) - x_mean)**2
+
+product = difference1*difference2
+
+# y = m*x + c
+
+m = sum(product)/sum(difference3) # m = 0.4157554163524112
+c = y_mean - m*x_mean # c = -0.363075521319028
+
+# Equation of regression line: y = 0.4157554163524112*x - 0.363075521319028
+
+x = array([1,2,3,4,5,6,7])
+y = array(m*x + c)
+
+plt.plot(x,y) # The regression line
+
+plt.scatter(petal_length, petal_width, color = 'g') # Scatter plot of petal length vs petal width
+plt.xlabel("Petal length")
+plt.ylabel("Petal width")
+plt.title("Relationship between petal length and petal width")
+
+plt.show() # The regression line is superimposed onto the scatter plot
