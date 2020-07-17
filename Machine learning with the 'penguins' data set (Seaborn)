@@ -1,0 +1,204 @@
+# Machine Learning: predicting penguin species from all other data (NB except islands data, as this is too obvious)
+# Thanks to Edureka for guidance with this code
+
+
+# Setup and uploading data
+
+import seaborn as sns
+from seaborn import boxplot
+from seaborn import countplot
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import pandas
+from pandas import get_dummies
+from pandas import concat
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+
+sns.get_dataset_names()
+penguins = sns.load_dataset("penguins")
+
+
+# General analysis
+
+penguins.shape # 344 rows × 7 columns
+penguins.describe() # rapid summary of quantitative data
+penguins.values
+
+# How many species are in the data? Check with if else statement:
+
+for i in penguins.species:
+    if i=="Adelie":
+        pass
+    elif i=="Gentoo":
+        pass
+    else:
+        print(i) # there is a third species 'ChinStrap', printing the penguins dataset does not show this
+
+
+# Data visualisation
+
+# (1) Penguin body mass
+boxplot(penguins.species, penguins.body_mass_g)
+
+# (2) Penguin culmen length
+boxplot(penguins.species, penguins.culmen_length_mm)
+
+# (3) Penguin culmen depth
+boxplot(penguins.species, penguins.culmen_depth_mm)
+
+# (4) Penguin flipper length
+boxplot(penguins.species, penguins.flipper_length_mm)
+
+# Count penguins by male and female
+male_penguins = [] 
+female_penguins = []
+unknown_penguins = []
+for i in penguins.values:
+    if "MALE" in i:
+        male_penguins.append(i)
+    elif "FEMALE" in i:
+        female_penguins.append(i)
+    else:
+        unknown_penguins.append(i)
+
+print(len(male_penguins)) # 168 male penguins
+print(len(female_penguins)) # 165 female penguins
+print(len(unknown_penguins)) # 11 penguins with unknown gender
+
+countplot(penguins.species, data = penguins, hue = "sex") # testing the gender distribution
+
+# Now test the species distribution
+Adelie = []
+Chinstrap = []
+Gentoo = []
+for i in penguins.species:
+    if i=="Adelie":
+        Adelie.append(i)
+    elif i=="Chinstrap":
+        Chinstrap.append(i)
+    else:
+        Gentoo.append(i)  
+print(len(Adelie)) # 152 Adelie penguins
+print(len(Chinstrap)) # 68 Chinstrap penguins
+print(len(Gentoo)) # 124 Gentoo penguins
+
+# Species count: visualisation with a piechart
+species = ["Adelie", "Chinstrap", "Gentoo"]
+sections = [152, 68, 124]
+colours = ['m', 'g', 'b']
+plt.pie(sections,
+        labels = species,
+        colors = colours,
+        explode = (0, 0.5, 0),
+        shadow = True,
+        startangle = 180,
+        autopct = '%1.1f%%')
+plt.title("Species Count")
+plt.show()
+
+
+# Summary of data analysis
+
+# General observations:
+# (1) Gentoo penguins have a significantly greater body mass than the other two species
+# (2) The culmen length of Adelie penguins is significantly lower than the other two species
+# (3) The culmen depth of Gentoo penguins is significantly lower than the other two species
+# (4) The flipper length of Gentoo penguins is significantly higher than that of the other two species
+
+# Potential biases:
+# (1) Overall there are 3 more male penguins than females in the dataset (this is minor for 344 values)
+# (2) Few Chinstrap penguins were observed (19.8%)
+
+# Initial expectations from a machine learning model:
+# (1) Certain unseen inputs should have obvious outputs (e.g. a body mass greater than 5,000g should definitely output a Gentoo)
+# (2) The accuracy of a machine learning model will be low due to the absence of Chinstrap penguin data
+
+
+# Cleaning the data
+
+penguins.isnull() # null data exists
+penguins.isnull().sum() # 11 penguins have an unassigned gender. Of these genderless penguins, 2 individuals have little other data.
+penguins.dropna(inplace=True)
+penguins.isnull().sum() # check there are now no null values
+penguins.shape # 333 rows x 7 columns (lost 11 entries)
+gender = get_dummies(data = penguins.sex, drop_first = True) # 1 = Male, 0 = Female
+penguins.drop("island", axis = 1, inplace = True) # removed island column as too obvious to predict species otherwise
+penguins.drop("sex", axis = 1, inplace = True)
+penguins = concat([penguins, gender], axis = 1)
+penguins = penguins.rename(columns = {'MALE': 'gender'})
+penguins # data now clean and suitable for machine learning model
+
+
+# Using the model
+
+X = penguins.drop("species", axis = 1) # Input data set
+y = penguins.species # Output data set
+LR = LogisticRegression()
+
+# Quick test with whole data set - e.g. check all three species can be outputted
+
+LR.fit(X,y)
+estimate1 = LR.predict([[40.0, 19.0, 180.0, 3748.0, 1]])
+estimate2 = LR.predict([[45.0, 19.5, 175.0, 3900.0, 1]])
+estimate3 = LR.predict([[50.0, 14.5, 200.0, 5000.0, 1]])
+print(estimate1) # Adelie
+print(estimate2) # Chinstrap
+print(estimate3) # Gentoo
+
+# Split data and use model
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state = 30)
+LR2 = LogisticRegression()
+LR2.fit(X_train, y_train)
+estimate4 = LR2.predict([[40.0, 19.0, 180.0, 3748.0, 1]])
+estimate5 = LR2.predict([[45.0, 19.5, 175.0, 3900.0, 1]])
+estimate6 = LR2.predict([[50.0, 14.5, 200.0, 5000.0, 1]])
+print(estimate4) # Adelie
+print(estimate5) # Chinstrap
+print(estimate6) # Gentoo
+
+
+# Testing the accuracy of the model
+
+classification_report(y_test, LR2.predict(X_test))
+A = confusion_matrix(y_test, LR2.predict(X_test))
+trace_A = 66 # trace is the sum of the main diagonal elements: here 36 + 12 + 18
+percentage_accuracy = (trace_A/(trace_A+1))*100 # 98.5% (1 d.p.)
+print(accuracy_score(y_test, LR2.predict(X_test))*100) # Same result, 98.5% (1 d.p.)
+
+# Accuracy of other models
+
+DTC = DecisionTreeClassifier()
+DTC.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC.predict(X_test))*100) # percentage accuracy = 95.5 (1 d.p.)
+
+KNC = KNeighborsClassifier()
+KNC.fit(X_train, y_train)
+print(accuracy_score(y_test, KNC.predict(X_test))*100) # percentage accuracy = 80.6 (1 d.p.)
+
+LDA = LinearDiscriminantAnalysis()
+LDA.fit(X_train, y_train)
+print(accuracy_score(y_test, LDA.predict(X_test))*100) # percentage accuracy = 98.5 (1 d.p.)
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+print(accuracy_score(y_test, GNB.predict(X_test))*100) # percentage accuracy = 97.0 (1 d.p.)
+
+svc = SVC()
+svc.fit(X_train, y_train)
+print(accuracy_score(y_test, svc.predict(X_test))*100) # percentage accuracy = 74.6 (1 d.p.)
+
+# Concluding remarks: Linear Discriminant Analysis is an equally good model. Need more Chinstrap penguin data to improve accuracy.
