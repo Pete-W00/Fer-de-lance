@@ -1,0 +1,78 @@
+# Fun with hyperbolic functions
+
+import numpy
+from numpy import sinh
+from numpy import cosh
+from numpy import tanh
+from numpy import exp
+from numpy import arange
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+
+# Creating hyperbolic functions manually
+
+x = 5
+print(sinh(5)) # 74.20321057778875
+print(cosh(5)) # 74.20994852478785
+print(tanh(5)) # 0.9999092042625951
+
+def shine(x):
+    return 0.5*(exp(x) - exp(-x))
+
+def coshine(x):
+    return 0.5*(exp(x) + exp(-x))
+
+def tansh(x):
+    return (exp(x) - exp(-x))/(exp(x) + exp(-x))
+
+print(shine(5)) # 74.20321057778875
+print(coshine(5)) # 74.20994852478785
+print(tansh(5)) # 0.999909204262595
+
+sinh(5) == shine(5) # True
+cosh(5) == coshine(5) # True
+tanh(5) == tansh(5) # Interestingly this returns a Boolean value of False. The built in tanh function gives a value to 16 d.p. whereas my manual function only gives a value to 15 d.p. 
+
+
+# Hyperbolic trigonometric identities
+
+def shinyplus(x,y):
+    return sinh(x)*cosh(y) + cosh(x)*sinh(y)
+
+def shinytake(x,y):
+    return sinh(x)*cosh(y) - cosh(x)*sinh(y)
+
+def coshyplus(x,y):
+    return cosh(x)*cosh(y) + sinh(x)*sinh(y)
+
+def coshytake(x,y):
+    return cosh(x)*cosh(y) - sinh(x)*sinh(y)
+
+def tanshyplus(x,y):
+    return (tanh(x) + tanh(y))/(1 + tanh(x)*tanh(y))
+
+def tanshytake(x,y):
+    return (tanh(x) + tanh(y))/(1 + tanh(x)*tanh(y))
+
+# Test it
+a = shinyplus(2,4) 
+b = coshyplus(2,4)
+c = a/b
+d = tanshyplus(2,4)
+print(c == d) # True
+
+# sinh(-x) = -sinh(x)
+shine(-5) == -shine(5) # True
+
+# cosh(-x) == cosh(x)
+coshine(-5) == coshine(5) # True
+
+
+# Plotting hyperbolics
+
+x = arange(-2, 2, 0.02)
+plt.plot(x, sinh(x), linewidth = 2, color = 'g')
+plt.plot(x, cosh(x), linewidth = 2, color = 'm')
+plt.plot(x, tanh(x), linewidth = 2, color = 'y')
