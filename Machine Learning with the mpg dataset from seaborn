@@ -1,0 +1,100 @@
+# Machine learning problem: predicting the country of origin of cars based on their mechanical capabilities
+
+
+# Setup
+
+import sklearn
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+
+import numpy
+from numpy import matrix
+
+import seaborn
+
+mpg = seaborn.load_dataset("mpg")
+
+
+# Quick analysis
+
+# How many countries are involved?
+for i in mpg.origin:
+    if i=="usa":
+        pass
+    elif i == "europe":
+        pass
+    else:
+        print(i) # Car country origin also includes Japan (this was not obvious from the dataset)
+  
+# What is the country distribution?
+usa = []
+europe = []
+japan = []
+
+for i in mpg.origin:
+    if i=="usa":
+        usa.append(i)
+    elif i == "europe":
+        europe.append(i)
+    else:
+        japan.append(i)
+        
+print(len(usa)) # 249 cars
+print(len(europe)) # 70 European cars
+print(len(japan)) # 79 Japanese cars
+# Cars are mainly from the USA. This is a significant bias.
+
+
+# Clean data
+
+mpg.isnull() # no obvious null values
+mpg.isnull().sum() # 6 horsepower entries contain null values
+mpg.dropna(inplace = True)
+mpg.isnull().sum() # a quick check, there are now no null values
+
+mpg.drop(columns = ["name"], axis = 1, inplace = True) # The names column is unhelpful as there are too many models
+
+
+# Making the model
+
+X = mpg.drop(columns = ["origin"]) # input set
+y = mpg.origin # output set
+
+DTC = DecisionTreeClassifier()
+DTC.fit(X,y)  # Test with whole dataset
+
+origin_estimate1 = DTC.predict([[20.0, 6, 200.0, 100.0, 2000, 20.0, 75]])
+origin_estimate2 = DTC.predict([[40.0, 4, 95.0, 50.0, 2100, 21.0, 82]])
+origin_estimate3 = DTC.predict([[25.0, 4, 110.0, 93.0, 2200, 15.0, 72]])
+
+print(origin_estimate1) # USA
+print(origin_estimate2) # Europe
+print(origin_estimate3) # Japan (e.g. all values can be outputted)
+
+# Split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+DTC2 = DecisionTreeClassifier()
+DTC2.fit(X_train, y_train)
+
+origin_estimate4 = DTC2.predict([[20.0, 6, 200.0, 100.0, 2000, 20.0, 75]])
+origin_estimate5 = DTC2.predict([[40.0, 4, 95.0, 50.0, 2100, 21.0, 82]])
+origin_estimate6 = DTC2.predict([[25.0, 4, 110.0, 93.0, 2200, 15.0, 72]])
+
+print(origin_estimate4) # USA
+print(origin_estimate5) # Europe
+print(origin_estimate6) # Japan
+# Same outputs
+
+
+# Testing the model accuracy
+
+cm = confusion_matrix(y_test, DTC2.predict(X_test))
+percentage_accuracy = ((matrix.trace(cm))/(cm.sum()))*100
+percentage_accuracy # 81.0126582278481%
+
+# Check
+percentage_accuracy_score = (accuracy_score(y_test, DTC2.predict(X_test)))*100 #  # 81.0126582278481
+percentage_accuracy_score # 81.0126582278481
