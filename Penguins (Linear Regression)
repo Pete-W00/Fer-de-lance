@@ -1,0 +1,123 @@
+# Machine learning with the seaborn dataset 'penguins'
+# Hypothesis: The greater the penguin flipper length the greater the penguin body mass
+# In this code: Data cleaning, graphical representation, linear regression modelling, r2 score, percentage difference
+
+
+# Setup
+
+import sklearn
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import numpy
+from numpy import polyfit
+
+import seaborn as sns
+
+penguins = sns.load_dataset("penguins")
+
+
+# Clean data
+
+penguins.isnull().sum()
+penguins.dropna(inplace = True)
+
+
+# Graphical representation (flipper length vs bodymass AND a regression line superimposed)
+
+X = penguins.flipper_length_mm.values # Input data set (Independent variable)
+y = penguins.body_mass_g.values # Output data set (Dependent variable)
+
+m, c = polyfit(X, y, 1)
+plt.plot(X, m*X + c) # Regression line, m = gradient, c = y_intercept
+
+plt.scatter(X, y, color = 'g') # Flipper length vs body mass
+plt.xlabel("Flipper length (mm)")
+plt.ylabel("Body mass (g)")
+plt.title("Relationship between penguin flipper length and body mass")
+plt.show() # A positive correlation exists (It is important to verify this, otherwise a linear relationship might be inappropriate)
+
+
+# Linear regression model: WHOLE DATASET
+
+LR = LinearRegression()
+X = X.reshape((len(X), 1)) # To fit the data into a linear regression model. Python fires a dimension error if you do not do this.
+LR.fit(X,y) # Start with the whole dataset (e.g. not yet split). LinearRegression(copy_X=True, fit_intercept=True, n_jobs=None, normalize=False).
+
+# Estimate one (whole dataset)
+X_predict = [180.0] 
+y_predict = LR.predict([X_predict])
+y_predict # A flipper length of 180mm predicts a body mass of 3155.5g (1dp)
+
+# Estimate two (whole dataset)
+X_predict = [205.0] 
+y_predict = LR.predict([X_predict])
+y_predict # A flipper length of 205mm predicts a body mass of 4409.3g (1dp)
+
+# Estimate three (whole dataset)
+X_predict = [250.0] # Now an interesting test: flipper length that is outside the data range
+y_predict = LR.predict([X_predict])
+y_predict # A flipper length of 250mm predicts a body mass of 6666.2 (1dp). NB this answer makes sense.
+
+# r2 score (whole dataset)
+# Manually the formula is sum((y_pred - y_mean)**2)/sum((y_actual - y_mean)**2)
+percentage_r2_accuracy = LR.score(X, y)*100
+print(percentage_r2_accuracy) # r2 accuracy of 76.2% (1dp)
+
+
+# Linear regression model: SPLIT DATASET
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+# Metrics of split
+print(len(X)) # 333 elements (266 + 67)
+print(len(X_train)) # 266 elements (c.80%)
+print(len(X_test)) # 67 elements (c.20%)
+print(len(y)) # 333 elements
+print(len(y_train)) # 266 elements
+print(len(y_test)) # 67 elements
+
+LR = LinearRegression()
+X_train = X_train.reshape((len(X_train), 1))
+LR.fit(X_train, y_train)
+
+# Estimate one (training data)
+X_predict = [180.0] 
+y_predict = LR.predict([X_predict])
+y_predict # A flipper length of 180mm predicts a body mass of 3156.0g (1dp)
+
+# Estimate two (training data)
+X_predict = [205.0] 
+y_predict = LR.predict([X_predict])
+y_predict # A flipper length of 205mm predicts a body mass of 4416.4g (1dp)
+
+# Estimate three (training data)
+X_predict = [250.0] 
+y_predict = LR.predict([X_predict])
+y_predict # A flipper length of 250mm predicts a body mass of 6685.2 (1dp). NB this answer makes sense.
+
+# r2 score. NB it's expected that this will be less than 76.2% (= r2_score for the whole dataset)
+percentage_r2_accuracy = LR.score(X_train, y_train)*100
+print(percentage_r2_accuracy) # 75.4% (1dp)
+# r2 is high which suggest a strong correlation between flipper length and body mass (the initial hypothesis)
+
+
+# Percentage difference (WHOLE DATASET VS SPLIT DATASET) - this is mainly out of interest, not essential for this data.
+# I will calculate the percentage differences between estimating with the whole data set vs estimating with just the training dataset
+# The formula for this is abs(difference between the estimates)/average of the estimates * 100
+
+# Estimate 1
+print((abs(3155.49518676 - 3155.97801721)/(0.5*(3155.49518676 + 3155.97801721)))*100) # Percentage difference = 0.02% (2dp)
+
+# Estimate 2
+print((abs(4409.32683532 - 4416.42756708)/(0.5*(4409.32683532 + 4416.42756708)))*100) # Percentage difference = 0.16% (2dp)
+
+# Estimate 3
+print((abs(6666.22380272 - 6685.23675683)/(0.5*(6666.22380272 + 6685.23675683)))*100) # Percentage difference = 0.28% (2dp)
+
+# 0.02% <= percentage_difference <= 0.28% for these three estimates
+# As expected, estimate 3 has the greatest percentage difference as it is a prediction outside of the data range
+# Depending on the data, these differences may be unacceptable. The soultion would be to get more data.
