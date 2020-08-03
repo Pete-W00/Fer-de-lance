@@ -1,0 +1,167 @@
+# Regression with the Seaborn data set 'tips'
+# Variables used: total bill and tip
+# Code contains: Data frame analysis, data visualisation, cleaning and regression 
+
+
+# Setup
+
+import sklearn
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+import pandas
+from pandas import plotting
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import numpy
+from numpy import polyfit
+
+import seaborn as sns
+from seaborn import countplot
+from seaborn import boxplot
+
+df = sns.load_dataset("tips")
+
+
+# General information about the data set
+
+df.shape # 244 rows × 7 columns
+df.count() # 244 entries for each class
+df.describe() # mean total_bill = 19.79 (2dp), mean tip = 3.00 (2dp), 3.07 <= total_bill <= 50.81, 1.00 <= tip <= 10.00
+df.corr() # Correlation between the total_bill and tip is 0.675734
+sns.heatmap(df.corr(), cmap = "YlGnBu") # This shows that it is not worth trying to find a link between size and tip
+plotting.scatter_matrix(df) # Very quick visualisation (e.g. size is mostly 2, total bill and tip are uniformly distributed etc)
+
+
+# Data visualisation
+
+total_bill = df.iloc[:, 0] 
+tip = df.iloc[:, 1] 
+day = df.iloc[:, 4]
+size = df.iloc[:, 6]
+
+# Test for a correlation between total bill and tips received
+plt.scatter(total_bill, tip, color = 'g')
+plt.xlabel("Total bill")
+plt.ylabel("Tip")
+plt.title("Total bill vs tip received")
+plt.show() # A positive correlation exists. From first glance this is not a strong correlation.
+
+# Now use histograms to get further visualisation regarding total bill and tip distribution
+
+# Total bill distribution
+bins = [0, 10, 20, 30, 40, 50, 60]
+plt.hist(total_bill, bins, histtype = 'bar', rwidth = 1, color = 'y')
+plt.xlabel("Total bill")
+plt.title("Total bill distribution")
+plt.show() # Most bills lie between 10-30 pounds
+
+# Tip distribution
+bins = [0, 2, 4, 6, 8, 10, 12]
+plt.hist(tip, bins, histtype = 'bar', rwidth = 1, color = 'y')
+plt.xlabel("Tips")
+plt.title("Tip distribution")
+plt.show() # Most tips lie between 2 and 4 pounds
+
+# Conclusion: most bills should lie between 10-30 pounds and the corresponding tips should mostly lie between 2-4 pounds
+
+# Other visualisations
+
+countplot(size, data = df, palette = "Set1") # size is almost always 2 (e.g. couples)
+df.groupby('size').size() # 156 couples, the next nearest is tables of 3 (38 entries)
+
+countplot(size, data = df, palette = "Set1", hue = df.day) # Friday is unpopular
+
+countplot(df.smoker, data = df, palette = "Set2") # More non-smokers
+df.groupby('smoker').size() # Specifically 93 smokers and 151 non-smokers
+
+boxplot1 = boxplot(total_bill, data = df) # Total bill outliers are around 40 pounds plus
+
+boxplot2 = boxplot(tip, data = df) # Tip outliers are from around 6 pounds plus
+
+boxplot3 = boxplot(day, total_bill, data = df) # Total bills are generally higher on the weekends
+
+boxplot4 = boxplot(day, tip, data = df) # There are several outliers for tips on Saturday
+
+
+# Clean dataset
+
+df.isnull() # At first glance, there are no null values
+df.isnull().sum() # The data set is already clean of null values
+
+
+# Regression
+# Total bill and tip
+# Currency is assumed to be British pounds (this is unstated)
+
+X = df.iloc[:, 0] # total bill
+y = df.iloc[:, 1] # tip
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+# Metrics of split
+X_train.shape # 195 rows
+X_test.shape # 49 rows
+y_train.shape # 195 rows
+y_test.shape # 49 rows 
+
+# Visualisation of the regression line
+
+m, c = polyfit(X_train, y_train, 1)
+plt.plot(X_train, m*X_train + c)
+
+plt.scatter(X, y, color = 'g') # Total bill vs tip
+plt.xlabel("Total bill")
+plt.ylabel("Tip")
+plt.title("Relationship between total bill and tip")
+plt.show() # This looks poor-fitting
+
+# Change from series object to numpy array to fit a regression model
+X_train = X_train.values 
+X_test = X_test.values
+y_train = y_train.values
+y_test = y_test.values
+
+LR = LinearRegression()
+X_train = X_train.reshape((len(X_train), 1))
+LR.fit(X_train, y_train)
+
+# Using the model (predicting tips from invented bills)
+
+# Estimate one
+invented_bill_one = [20.0] 
+tip_predict_one = LR.predict([invented_bill_one])
+tip_predict_one # A bill of £20 predicts a tip of £3.06 (NB this looks right from the regression line)
+
+# Estimate two
+invented_bill_two = [40.0] 
+tip_predict_two = LR.predict([invented_bill_two])
+tip_predict_two # A bill of £40 predicts a tip of £5.20 (NB this looks right from the regression line)
+
+# Estimate three (beyond the regression line range)
+invented_bill_three = [70.0] 
+tip_predict_three = LR.predict([invented_bill_three])
+tip_predict_three # A bill of £70 predicts a tip of £8.41
+
+# Now I will calculate the tip as a percentage of the total bill + tip
+# NB I'm assuming the tip was not included in the total bill (this is not stated)
+
+# Tip percentage one
+tip_percentage_one = (tip_predict_one/(tip_predict_one + invented_bill_one))*100 # 13.29% (2dp)
+
+# Tip percentage two
+tip_percentage_two = (tip_predict_two/(tip_predict_two + invented_bill_two))*100 # 11.51% (2dp)
+
+# Tip percentage three
+tip_percentage_three = (tip_predict_three/(tip_predict_three + invented_bill_three))*100 # 10.73% (2dp)
+
+# Thus tips do not increase in a direct proportion with the total bills (which would be a y = x regression line)
+
+
+# Accuracy of the model?
+
+percentage_r2_accuracy = LR.score(X_train, y_train)*100 
+# Quite poor: 43.1%. This was evident from the visualisation.
+# Solution: obtain more data or use another model.
