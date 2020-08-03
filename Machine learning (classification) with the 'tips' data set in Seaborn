@@ -1,0 +1,75 @@
+# ML, classification: predicting which day people had their meals from other data provided
+# Data: Seaborn, 'tips'
+# NB I know this data set well, so I have missed out analysis I would normally perform (such as cleaning)
+
+
+# Setup
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+import pandas
+from pandas import get_dummies
+from pandas import concat
+
+import numpy
+from numpy import matrix
+
+import seaborn as sns
+
+df = sns.load_dataset("tips")
+
+
+# Qualitative data must be replaced by numeric values
+
+gender = get_dummies(data = df.sex, drop_first = True) # Female = 1, Male = 0
+smoke = get_dummies(data = df.smoker, drop_first = True) # No = 1, Yes = 0
+time_of_day = get_dummies(data = df.time, drop_first = True) # Dinner = 1, Lunch = 0
+
+df = concat([df, gender, time_of_day, smoke], axis = 1)
+df.drop(["sex", "smoker", "time"], axis = 1, inplace = True)
+df = df.rename(columns = {'Female': 'gender', 'Dinner': 'time_of_day', 'No': 'smoke'})
+
+
+# Split and apply model
+
+X = df.drop(columns = ["day"])
+y = df.day
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()
+DTC.fit(X_train, y_train)
+
+
+# Use model
+
+pred1 = DTC.predict([[20.0, 2.0, 3, 1, 1, 0]]) # e.g. 3 females, non-smoking, lunch, bill £20, tip £2.
+pred1 # Sat
+
+pred2 = DTC.predict([[25.0, 3.0, 2, 1, 1, 1]]) 
+pred2 # Sat
+
+pred3 = DTC.predict([[15.0, 1.0, 2, 1, 1, 1]]) 
+pred3 # Sun
+
+pred4 = DTC.predict([[18.0, 3.0, 2, 1, 1, 1]]) 
+pred4 # Sun
+
+
+# Accuracy of model?
+
+classification_report(y_test, DTC.predict(X_test))
+
+A = confusion_matrix(y_test, DTC.predict(X_test))
+matrix.trace(A) # 30
+A.sum() # 49 (e.g. 19 values are false +ve/-ve)
+
+percentage_accuracy = accuracy_score(y_test, DTC.predict(X_test))*100 # Essentially (30/49)*100 from the confusion_matrix
+percentage_accuracy # 61.2% (2dp)
+
+# This accuracy changes for each iteration. More data required to improve accuracy.
