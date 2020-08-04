@@ -1,0 +1,87 @@
+# This code demonstrates how to get data sets from Python to SQL and run queries on the data
+# These queries could be awkward to code in Python, so SQL is an important tool
+
+
+# Step one - Get the data from python
+
+import seaborn as sns
+df = sns.load_dataset("tips")
+df.to_excel('tips.xlsx', sheet_name = 'data', index = False)
+# Save the excel file as a CSV file, as otherwise SQL will not recognise it
+
+
+# Step two - Import the data into SQL (NB from now on all the code is SQL)
+
+# Firstly create a database and a table
+
+CREATE DATABASE tips;
+SHOW DATABASES;
+USE tips;
+
+CREATE TABLE meals(
+total_bill FLOAT NOT NULL,
+tip FLOAT NOT NULL,
+sex ENUM('Male', 'Female') NOT NULL,
+smoker ENUM('Yes', 'No') NOT NULL,
+day VARCHAR(10) NOT NULL,
+time VARCHAR(20) NOT NULL,
+size TINYINT UNSIGNED NOT NULL);
+
+# Now use the import wizard to insert data from the CSV file into the table (easy if you have created a table beforehand)
+SELECT*FROM meals; # To check it worked!
+
+
+Step three - Queries
+
+# The following queries are just some of the many possible questions one could ask about this data set
+
+# How many total bills were £40 or greater? (Currency is assumed to be British pounds, not stated anywhere)
+SELECT total_bill FROM meals
+WHERE total_bill >= 40.00; 
+# Answer: SQL tells you that 10 rows were returned - e.g. 10 meals
+
+# What was the maximum and minimum tip?
+SELECT 
+MIN(tip) AS MIN
+FROM meals;
+
+SELECT 
+MAX(tip) AS MAX
+FROM meals;
+# Answer: Minimum tip was £1, maximum tip was £10
+
+# What was the grand total of all the tips?
+SELECT 
+SUM(total_bill) AS SUM
+FROM meals;
+# Answer: £4,827.77 (or £1,206.94 per day)
+
+# How many smokers were there on a Sunday who also spent over £30?
+SELECT smoker, day, total_bill FROM meals
+WHERE smoker = "Yes" AND day = "Sun" AND total_bill > 30;
+# Answer: Only 7 entries fit this as it was a very specific question
+
+# How many tips were greater than 30% of the total bill (e.g. extremely generous customers)?
+SELECT tip, total_bill FROM meals
+WHERE tip > total_bill*0.3;
+# Answer: 3 customers (NB one of the bills was only £3.07, so 30% only represents 92p)
+
+# How many groups of 4 had Sunday dinners? Plus include smoking data, but no query.
+SELECT size, day, time, smoker FROM meals
+WHERE size = 4 && day = "Sun" && time != "Lunch"
+ORDER BY smoker = "Yes" DESC; 
+# Answer: 18 groups having Sunday dinners, of which two smoke
+
+# How many people tipped between 5 and 10 pounds inclusive?
+SELECT tip 
+FROM meals
+WHERE tip
+BETWEEN 5.00 AND 10.00;
+# Answer: 28 groups    
+
+
+# Concatination - not really necessary for this data set
+SELECT CONCAT(sex, " ", smoker) AS 'gender_smoker'
+FROM meals;
+
+# Conclusion: these queries are quick to complete once the data is correctly in SQL. Coding these queries could be tedious.
