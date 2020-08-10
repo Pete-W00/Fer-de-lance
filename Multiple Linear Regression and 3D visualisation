@@ -1,0 +1,86 @@
+# Predicting 5km race results from age and weekly training mileage (using multiple linear regression)
+# This is a fictional data set because I want to ensure it works
+# This code also contains 3D visualisation (this seems to be tricky to code in Python)
+
+
+# Setup
+
+import numpy
+from numpy import meshgrid
+from numpy import array
+
+import pandas
+from pandas import DataFrame
+
+import matplotlib
+from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+import sklearn
+from sklearn.linear_model import LinearRegression
+
+
+# Create the data set (I designed it to fit multiple linear regression)
+
+data = {"age": [22, 28, 45, 57, 65, 70],                   # unit(age) = years
+        "weekly_mileage": [70, 75, 55, 40, 30, 15],        # unit(weekly_mileage) = miles 
+        "race_result": [16, 15, 17, 19, 22, 27]}           # unit(race_result) = mins
+
+df = DataFrame(data)
+
+df1 = df[["age", "weekly_mileage"]]
+df2 = df[["race_result"]]
+
+
+# Fit the model 
+
+LR = LinearRegression()
+LR.fit(df1, df2)
+
+
+# Determine the formula (optional, but I find it helps)
+
+print(LR.intercept_) # 44.97634069
+print(LR.coef_)      # -0.19479495 and -0.34369085
+
+# Thus the forumula is: race_result = 44.97634069 - 0.19479495*age - 0.34369085*weekly_mileage
+
+
+# Use the model
+
+RR1 = LR.predict([[35, 60]]) # e.g. approximately 44.97634069 - 0.19479495*35 - 0.34369085*60
+RR2 = LR.predict([[45, 20]])
+RR3 = LR.predict([[70, 40]])
+
+print(RR1) # 17.53706625 (e.g. around 17mins 30seconds)
+print(RR2) # 29.33675079 (e.g. around 29mins 20seconds)
+print(RR3) # 17.59305994 (e.g. around 17mins 35seconds)
+
+# Answers are meaningful
+
+
+# 3D visualisation (NB this gives a shape where vertices represent 3D coordinates - programming a 3D scatter plot is beyond this code)
+
+x = df.age.values
+y = df.weekly_mileage.values
+z = array([[16, 15, 17, 19, 22, 27]])
+
+x, y = meshgrid(x, y)
+
+graph = plt.figure()
+axes = Axes3D(graph)
+
+axes.plot_surface(x, y, z, color = 'g')
+
+axes.set_xlabel("Age")
+axes.set_ylabel("Weekly mileage")
+axes.set_zlabel("Race result")
+plt.title("5k Running")
+
+plt.show() # This plot would need to be adjusted if there were more data, but acceptable for 6 (x,y,z) coordinates
+
+
+# Accuracy?
+
+percentage_r2_score = LR.score(df1, df2)*100
+percentage_r2_score # 96.1% (1dp) (a very good fit)
