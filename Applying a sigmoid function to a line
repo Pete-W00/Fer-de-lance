@@ -1,0 +1,26 @@
+# Applying a sigmoid function to a line
+
+import numpy
+from numpy import arange
+from numpy import e
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+f = lambda x: x + 1
+g = lambda x: 1/(1 + e**(-x - 1))   # e.g. transforming a line y= x + 1 into a sigmoid curve
+
+x = arange(-5, 5, 0.01)
+
+plt.plot(x, f(x), label = "y = x + 1", linewidth = 2, color = 'b')    # y = x + 1
+plt.plot(x, g(x), label = "Sigmoid", linewidth = 2, color = 'g')      # y = 1 + e**(-x - 1)
+
+plt.grid(color = 'k')
+plt.title("Sigmoid function applied to y = x + 1")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.ylim([-0.5, 1.5])
+plt.legend(loc = "upper left")
+plt.show()
+
+# Putting both graphs together means you have to change the x and y limits, but this plot shows how the line was transformed.
