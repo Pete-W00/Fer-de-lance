@@ -1,0 +1,42 @@
+# Plotting sigmoid functions
+# This code is just testing what python can do with plotting
+
+import numpy
+from numpy import arange
+from numpy import log         # NB import log from numpy ... log from math cannot handle arrays
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+def f(x):
+    return log(x/(1-x))
+
+def g(x):
+    return log(5*x/(1-x))
+
+def h(x):
+    return log(15*x/(1-x))
+
+x = arange(0.001, 0.999, 0.001)
+
+y1 = f(x)
+y2 = g(x)
+y3 = h(x)
+
+plt.plot(x, y1, label = "Curve one", linewidth = 2, color = 'r')
+plt.plot(x, y2, label = "Curve two", linewidth = 2, color = 'g')
+plt.plot(x, y3, label = "Curve three", linewidth = 2, color = 'b')
+
+axes = plt.gca()
+ylim = axes.get_ylim()
+plt.vlines(0, ylim[0], ylim[1], linestyle = "dashed")       # Asymptote at x = 0
+plt.vlines(1, ylim[0], ylim[1], linestyle = "dashed")       # Asymptote at x = 1
+
+plt.grid(color = 'y')
+plt.legend(loc = "lower center")       # I had to move the legend as it obscured the x = 0 asymptote
+plt.title("Sigmoid functions")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.show()          
+
+# Cool graphs! 
