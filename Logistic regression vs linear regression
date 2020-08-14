@@ -1,0 +1,90 @@
+# An example of logistic regression - I used a fictional data set that fits a logistic regression model
+
+
+# Setup
+
+import pandas
+from pandas import DataFrame
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
+
+
+# Create the data set 
+
+data = {"age": [15, 17, 20, 21, 22, 54, 55, 58, 66, 72, 73],                  
+        "drives": [0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0]}              # 0 = does not drive, 1 = drive
+
+df = DataFrame(data)
+
+
+# Visualisation
+
+age = df.age       
+drives = df.drives
+
+plt.scatter(age, drives, c = "g", marker = "x")    
+plt.title("Can you drive?")
+plt.xlabel("age (years)")
+plt.ylabel("drive (N = 0, Y = 1)")
+plt.show()                                # Plot shows that a sigmoid curve would fit better than a line
+
+
+# Split data for a ML model
+
+X = df.drop("drives", axis = 1)   # Input data set (age)
+y = df.drives                     # Output data set (drives)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+
+# Metrics of split
+print(X_train.shape)     # 7 elements
+print(X_test.shape)      # 4 elements
+print(y_train.shape)     # 7 elements
+print(y_test.shape)      # 4 elements
+
+
+# Fit logistic regression
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+
+# Using model with known data
+
+print(X_test)          # ages: 54, 15, 72, 73 (actual = 1, 0, 1, 0 )
+LR.predict(X_test)     # predicted return = 1, 0, 1, 1 (good 3/4 ... 73 and not driving is the outlier which the model did not identify)
+
+
+# Use model with unseen data
+
+LR.predict([[12]])  # 12 years old implies cannot drive
+LR.predict([[88]])  # 88 years old implies can drive
+LR.predict([[50]])  # 50 years old implies can drive
+
+
+# Accuracy?
+
+print(accuracy_score(y_test, LR.predict(X_test))*100) # percentage accuracy = 75% (decent)
+
+
+# What would have happened if we had tried to use linear regression?
+
+LR2 = LinearRegression()
+LR2.fit(X_train, y_train)
+
+percentage_accuracy_LR2 = LR2.score(X_test, y_test)*100
+print(percentage_accuracy_LR2)                                 # LR2 accuracy = 9.85%, very low! Essentially worthless here
+
+
+# Conclusion:
+
+
+# Linear regression cannot handle a mixture of continuous and binary data
+# Categorical data is often better fitted with sigmoid curves
