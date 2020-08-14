@@ -1,0 +1,63 @@
+# Cleaning, transforming and applying decision tree to seaborn data set 'Penguins'
+
+
+# Setup
+
+import sklearn
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+
+import pandas
+from pandas import concat
+
+import seaborn as sns
+
+df = sns.load_dataset("penguins")
+
+
+# Quick clean
+
+df.isnull().sum() # 11 entries have null data
+df.dropna(inplace=True)
+
+
+# Transforming
+
+# (1) Drop all columns except: body mass, island, species and sex
+# (2) Convert all qualitative values to numerical
+# (3) Covert body mass to kg
+# (4) Use body mass, island and species to predict sex of penguin
+
+# (1)
+df.drop(["culmen_length_mm", "culmen_depth_mm", "flipper_length_mm"], axis = 1, inplace = True)
+
+# (2)
+bm = df["body_mass_g"]                                 # We have to drop body mass column and then add it back as it is already numerical
+df.drop(["body_mass_g"], axis = 1, inplace = True)
+df = df.apply(LabelEncoder().fit_transform)            # Now quantitative!
+df = concat([df, bm], axis = 1)
+
+# (3)
+converter = lambda x: x/1000                                   # convert from g to kg by dividing by 1000
+df.body_mass_g = df.body_mass_g.apply(converter)
+df = df.rename(columns = {'body_mass_g': 'mass'})
+
+# (4)
+
+# Split
+X = df.drop(columns = ["sex"])
+y = df.sex
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+# Choose model
+DTC = DecisionTreeClassifier()
+DTC.fit(X_train, y_train)
+
+# Use model
+pred1 = DTC.predict([[0, 2, 4.000]]) # Male
+pred2 = DTC.predict([[1, 1, 3.001]]) # Female
+
+# Accuracy?
+percentage_accuracy = accuracy_score(y_test, DTC.predict(X_test))*100    # 88.1% accuracy (good!)
