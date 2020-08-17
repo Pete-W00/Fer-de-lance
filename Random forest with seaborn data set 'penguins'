@@ -1,0 +1,135 @@
+# Random forest with seaborn data set 'penguins'
+# Machine learning - predictiong species from body mass and flipper length using random forest
+# This code also goes into some detail about the confusion matrix
+
+
+# Setup
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import seaborn as sns
+from seaborn import heatmap
+
+df = sns.load_dataset("penguins")
+
+
+# Data clean
+
+df.isnull().sum()                # 11 null entries
+df.dropna(inplace = True)
+
+df.drop({"island", "sex", "culmen_length_mm", "culmen_depth_mm"}, axis = 1, inplace = True)      # Just using mass and flippers to predict species
+
+df = df.rename(columns = {'flipper_length_mm': 'fl',       # Simplify names 
+                          'body_mass_g': 'bm'})
+
+
+# Split data
+
+X = df.drop("species", axis = 1)       # Input data set
+y = df.species                         # Output data set
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+
+# Choose and fit model
+
+RFC = RandomForestClassifier(n_estimators = 5)       # e.g. 5 decision trees
+RFC.fit(X_train, y_train)
+
+
+# Check model makes reasonable predictions
+
+print(RFC.predict([[180.0, 3748.0]]))        # Adelie - yes
+print(RFC.predict([[215.0, 5300.0]]))        # Gentoo - yes
+
+
+# Accuracy of model
+
+print(accuracy_score(y_test, RFC.predict(X_test))*100)    # 74.6% accuracy 
+RFC.score(X_test, y_test)                                 # score = 0.746
+
+
+# Improve model
+
+RFC = RandomForestClassifier(n_estimators = 50)           # e.g. 50 decision trees
+RFC.fit(X_train, y_train)                        
+print(accuracy_score(y_test, RFC.predict(X_test))*100)    # 77.6%
+
+RFC = RandomForestClassifier(n_estimators = 60)           # e.g. 60 decision trees
+RFC.fit(X_train, y_train)                        
+print(accuracy_score(y_test, RFC.predict(X_test))*100)    # 80.6%
+
+RFC = RandomForestClassifier(n_estimators = 70)           # e.g. 70 decision trees
+RFC.fit(X_train, y_train)                        
+print(accuracy_score(y_test, RFC.predict(X_test))*100)    # 77.6%
+
+# Optimal at roughly 60 decision trees
+
+RFC = RandomForestClassifier(n_estimators = 60)           
+RFC.fit(X_train, y_train)
+
+
+# Confusion matrix
+
+matrix = confusion_matrix(y_test, RFC.predict(X_test))
+
+penguin = ["Adelie", "Chinstrap", "Gentoo"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(penguin)
+y_label = axes.set_yticklabels(penguin)
+
+heatmap(matrix, 
+        cmap = "YlGnBu",
+        annot = True,
+        linewidths = 3,
+        linecolor = 'yellow',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+
+# Notes from the confusion matrix
+
+# Overall accuracy = (54/67)*100 (e.g. 80.6%)
+# 31 predictions for "Adelie" of which 25 were correct (80.6%)
+# 14 predictions for "Chinstrap" of which 7 were correct (50%)
+# 22 predictions for "Gentoo" of which 22 were correct (100%)
+
+# Why is the model so bad at predicting Chinstraps? From code elsewhere I know this is due to lack of Chinstrap data
+
+# Species distribution
+
+Adelie = []
+Chinstrap = []
+Gentoo = []
+
+for i in df.species:
+    if i == "Adelie":
+        Adelie.append(i)
+    elif i == "Chinstrap":
+        Chinstrap.append(i)
+    else:
+        Gentoo.append(i) 
+        
+print(len(Adelie))               # 146 Adelie penguins (43.8%)
+print(len(Chinstrap))            # 68 Chinstrap penguins (20.4%)
+print(len(Gentoo))               # 119 Gentoo penguins (35.7%)
+
+# Either remove Chinstraps or obtain more data
