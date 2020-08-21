@@ -1,0 +1,269 @@
+# Improving a decision tree (seaborn dataset "exercise")
+
+# Code contains
+# (0) Setup
+# (1) Cleaning dataframe
+# (2) Dataframe splitting
+# (3) Visualisation and statistical analysis
+# (4) Machine learning - decision tree (accuracy + confusion matrix)
+# (5) Refining the machine learning model
+# (6) Visualising the refined decision tree
+
+
+# (0) Setup
+
+import pandas
+from pandas import DataFrame
+from pandas import concat
+
+import numpy
+from numpy import matrix
+
+import seaborn as sns
+from seaborn import boxplot
+from seaborn import heatmap
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import sklearn
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+df = sns.load_dataset("exercise")
+
+
+# (1) Cleaning dataframe
+
+# NB dataset has no NaN values
+
+df.drop({"Unnamed: 0", "id", "diet"}, axis = 1, inplace = True)    # Drop rendundant columms
+
+df.time = df.time.replace("1 min", 1)                              # Remove unhelpful strings
+df.time = df.time.replace("15 min", 15)
+df.time = df.time.replace("30 min", 30)
+
+
+# (2) Dataframe splitting
+
+# There are 3 exercise types, so make 3 separate dataframes
+
+rest = df[df["kind"] == "rest"]                                    # 3 dataframes - rest, walk, run
+walk = df[df["kind"] == "walking"]
+run = df[df["kind"] == "running"]
+
+rest = rest.reset_index(drop = True)                               # Reset indexes
+walk = walk.reset_index(drop = True)
+run = run.reset_index(drop = True)
+
+rest.drop({"kind"}, axis = 1, inplace = True)                      # Drop rendundant columms 
+walk.drop({"kind"}, axis = 1, inplace = True)
+run.drop({"kind"}, axis = 1, inplace = True)
+
+
+# (3) Visualisation and statistical analysis
+
+plt.figure(figsize = (15, 15))
+plt.subplot(311)
+boxplot(rest.time, rest.pulse)
+plt.xlabel("Time resting (in minutes)")
+plt.ylabel("Pulse")
+plt.title("Effect of rest on pulse rate")
+plt.show()                                             # Pulse largely the same for resting
+
+plt.figure(figsize = (15, 15))
+plt.subplot(312)
+boxplot(walk.time, walk.pulse)
+plt.xlabel("Time walking (in minutes)")
+plt.ylabel("Pulse")
+plt.title("Effect of rest on pulse rate")
+plt.show()                                             # Pulse rate increases slightly after long periods of walking
+
+plt.figure(figsize = (15, 15))
+plt.subplot(313)
+boxplot(run.time, run.pulse)
+plt.xlabel("Time running (in minutes)")
+plt.ylabel("Pulse")
+plt.title("Effect of running on pulse rate")
+plt.show()                                             # Pulse rate increases significantly after long periods of running
+
+
+# Other pulse stats
+
+# rest - pulse rate
+print(rest.pulse.mean())     # 90.8 bpm (1dp)
+print(rest.pulse.std())      # 5.8 bpm (1dp)
+print(rest.pulse.median())   # 91.5 bpm
+print(rest.pulse.mode())     # 97 bpm
+print(rest.pulse.max())      # 100 bpm
+print(rest.pulse.min())      # 80 bpm
+
+# walk - pulse rate
+print(walk.pulse.mean())     # 95.2 bpm
+print(walk.pulse.std())      # 6.8 bpm (1dp)
+print(walk.pulse.median())   # 95.5 bpm
+print(walk.pulse.mode())     # 86/96/103 bpm
+print(walk.pulse.max())      # 109 bpm
+print(walk.pulse.min())      # 84 bpm
+
+# run - pulse rate
+print(run.pulse.mean())     # 113.1 bpm (1dp)
+print(run.pulse.std())      # 17.6 bpm (1dp)
+print(run.pulse.median())   # 110 bpm
+print(run.pulse.mode())     # 98 bpm
+print(run.pulse.max())      # 150 bpm
+print(run.pulse.min())      # 87 bpm
+
+# The range of pulse rates increases between activities
+# The mean pulse rate is significantly greater for the acitivity running
+
+
+# (4) Decision tree (machine learning) - use pulse AND time to predict (exercise) kind
+
+# NB we are now looking at the whole dataframe again (e.g. not rest, walk and run individually)
+
+X = df.drop("kind", axis = 1)       # Input data set
+y = df.kind                         # Output data set
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+# Check model makes reasonable predictions
+print(DTC.predict([[86, 15]]))                                # rest    - yes
+print(DTC.predict([[149, 30]]))                               # running - yes
+  
+# Accuracy of model?
+print(accuracy_score(y_test, DTC.predict(X_test))*100)        # 38.9% accuracy - suprisingly low actually!
+
+
+# Confusion matrix
+
+m = confusion_matrix(y_test, DTC.predict(X_test))
+
+exercise = ["rest", "walk", "run"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(exercise)
+y_label = axes.set_yticklabels(exercise)
+
+heatmap(m, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 5,
+        linecolor = 'g',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+
+# Analysis of the confusion matrix
+
+print(m.sum())                  # Sum of all elements is 18
+print(matrix.trace(m))          # BUT the trace is only 7
+
+# The problem is the model mixing up 'rest' and 'run'
+# The model predicted 'rest' 5 times when the result was actually 'run'
+# Conversely, the model predicted 'run' three times when the result was in fact 'rest'
+
+
+# (5) Refining the machine learning model
+
+# To improve model it is necessary to drop the 'rest' values
+
+walk2 = df[df["kind"] == "walking"]
+run2 = df[df["kind"] == "running"]
+
+df1 = concat([walk2, run2])
+df1 = df1.reset_index(drop = True)
+
+
+# Decision tree - use pulse AND time to predict kind, but only two kinds now
+
+X = df1.drop("kind", axis = 1)                               # Input data set
+y = df1.kind                                                 # Output data set
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+# Check model makes reasonable predictions
+print(DTC.predict([[85, 15]]))                               # Walking - yes
+print(DTC.predict([[114, 30]]))                              # Running - yes
+
+# Accuracy of new model?
+print(accuracy_score(y_test, DTC.predict(X_test))*100)       # 100% accuracy!
+
+
+# New confusion matrix
+
+m2 = confusion_matrix(y_test, DTC.predict(X_test))
+
+exercise = ["walk", "run"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(exercise)
+y_label = axes.set_yticklabels(exercise)
+
+heatmap(m2, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 5,
+        linecolor = 'g',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+
+# This time with the confusion matrix:
+
+print(m2.sum())                              # Sum of all elements is 12
+print(matrix.trace(m2))                      # Trace is 12
+m2.sum() == matrix.trace(m2)                 # TRUE
+
+# Model went from a poor accuracy of 38.9% to 100% simply by removing the 'rest' option
+
+
+# (6) Visualising the refined decision tree
+
+plt.figure(figsize = (40, 40))
+
+sklearn.tree.plot_tree(DTC, 
+                       max_depth = None,                      
+                       feature_names = X.columns, 
+                       class_names = True,                   # y[0] = running and y[1] = walking 
+                       label = 'all', 
+                       filled = True, 
+                       impurity = True, 
+                       node_ids = True,                       
+                       proportion = False, 
+                       rounded = True, 
+                       precision = 5, 
+                       ax = None,
+                       fontsize = 20)
+
+plt.show()
+
+# Key observations from the tree 
+# For walkers upper_bound(pulse rate) =  109.5. If input exceeds pulse rate of 109.5 then the output is always 'running'.
+# Could take up to eight question nodes to output a result (if eight then output is alwatys "running")
