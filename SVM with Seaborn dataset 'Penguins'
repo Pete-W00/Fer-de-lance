@@ -1,0 +1,225 @@
+# SVM with Seaborn dataset penguins (Made 2D)
+# Use body mass and flipper length to classify species
+
+
+# SETUP
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.svm import SVC
+
+import pandas
+from pandas import concat
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import seaborn as sns
+from seaborn import heatmap
+
+df = sns.load_dataset("penguins")
+
+
+# CLEAN DATA AND CHANGE DATAFRAME
+
+df.isnull().sum()                      # 11 penguins are null
+df.dropna(inplace = True)
+
+df.drop({"island", "culmen_length_mm", "culmen_depth_mm", "sex"}, axis = 1, inplace = True)    # Drop rendundant columms
+
+f = lambda x: x/10                     # Convert mm to cm
+g = lambda y: y/1000                   # Convert g to kg
+
+df["flipper_length_mm"] = df["flipper_length_mm"].apply(f)
+df["body_mass_g"] = df["body_mass_g"].apply(g)
+
+df = df.rename(columns = {"flipper_length_mm": "flipper_cm",       # Rename columns to reflect units used 
+                          "body_mass_g": "mass_kg"})
+  
+Adelie = df[df["species"] == "Adelie"]                             # Create a dataframe for each species  
+Gentoo = df[df["species"] == "Gentoo"]
+Chinstrap = df[df["species"] == "Chinstrap"]
+
+
+# CHECK SUITABILITY FOR SVM (USING GRAPHS)
+
+# Adelie vs Gentoo 
+
+plt.scatter(Adelie.mass_kg,
+            Adelie.flipper_cm,
+            color = 'r',
+            marker = 'x')
+
+plt.scatter(Gentoo.mass_kg,
+            Gentoo.flipper_cm,
+            color = 'y',
+            marker = 'o')
+
+plt.xlabel("mass in kg")
+plt.ylabel("flipper length in cm")
+plt.title("Adelie vs Gentoo")
+plt.show()                                           # This is very suitable for SVM!
+
+
+# MAKE SVM MODEL - ADELIE AND GENTOO
+
+df1 = concat([Adelie, Gentoo])                       # Excluding Chinstrap penguins due to insufficient data
+df1 = df1.reset_index(drop = True)
+
+X = df1.drop("species", axis = 1)
+y = df1.species
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+svm1 = SVC()       
+svm1.fit(X_train, y_train)
+
+print(accuracy_score(y_test, svm1.predict(X_test))*100)    # 100% accuracy! As this model is already 100% accurate I will restart with Adelie and Chinstrap penguins (closer in size)
+
+
+# RESTARTING WITH ADELIE AND CHINSTRAP
+
+# Adelie vs Chinstrap - suitability for SVM:
+
+plt.scatter(Adelie.mass_kg,
+            Adelie.flipper_cm,
+            color = 'r',
+            marker = 'x')
+
+plt.scatter(Chinstrap.mass_kg,
+            Chinstrap.flipper_cm,
+            color = 'y',
+            marker = 'o')
+
+plt.xlabel("mass in kg")
+plt.ylabel("flipper length in cm")
+plt.title("Adelie vs Chinstrap")
+plt.show()                                                    # Less suitable for SVM!
+
+df2 = concat([Adelie, Chinstrap])                 
+df2 = df2.reset_index(drop = True)
+
+X = df2.drop("species", axis = 1)
+y = df2.species
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+svm2 = SVC()       
+svm2.fit(X_train, y_train)
+print(accuracy_score(y_test, svm2.predict(X_test))*100)    # 58.1% accuracy!
+
+# An accuracy of 58.1% is poor for most purposes, so now we can try and improve it!
+
+
+# MODEL IMPROVEMENTS
+
+svm3 = SVC(C = 12.0)
+svm3.fit(X_train, y_train)
+print(accuracy_score(y_test, svm3.predict(X_test))*100)    # Now 60.5% accuracy
+
+svm4 = SVC(C = 12.0, kernel = "poly")
+svm4.fit(X_train, y_train)
+print(accuracy_score(y_test, svm4.predict(X_test))*100)    # Now 62.8% accuracy
+
+# Try making the test size smaller
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+
+svm5 = SVC(C = 12.0, kernel = "linear")       
+svm5.fit(X_train, y_train)
+print(accuracy_score(y_test, svm5.predict(X_test))*100)    # Now 63.6% accuracy
+
+
+# TRY REMOVING OUTLIERS
+
+# Now we will try to remove chinstrap penguins with a flipper length of less than 18.5cm (visible outliers from the earlier graph)
+
+for i in Chinstrap.flipper_cm:
+    if i < 18.5:
+        print(i)
+    else:
+        pass                              # Will remove three chinstrap flipper lengths - 17.8cm, 18.1cm and 18.1cm
+        
+Chinstrap2 = Chinstrap.reset_index()
+
+Chinstrap2.iloc[0:40, :]                  # Located the outliers at indexes 6, 17 and 20
+
+Chinstrap3 = Chinstrap2.drop(6)           # Now get rid of the outliers
+Chinstrap4 = Chinstrap3.drop(17)
+Chinstrap5 = Chinstrap4.drop(20)
+
+Chinstrap5 = Chinstrap5.reset_index(drop = True)
+
+for i in Chinstrap5.flipper_cm:            # Check outliers are removed
+    if i < 18.5:
+        print(i)
+    else:
+        pass
+
+plt.scatter(Adelie.mass_kg,                # Graph without outliers
+            Adelie.flipper_cm,
+            color = 'r',
+            marker = 'x')
+
+plt.scatter(Chinstrap5.mass_kg,
+            Chinstrap5.flipper_cm,
+            color = 'y',
+            marker = 'o')
+
+plt.xlabel("mass in kg")
+plt.ylabel("flipper length in cm")
+plt.title("Adelie vs Chinstrap")
+plt.show()      
+
+df_revised = concat([Adelie, Chinstrap5])                 
+df_revised = df_revised.reset_index(drop = True)
+
+df_revised.drop({"level_0", "index"}, axis = 1, inplace = True)         # Two extra columns were created - I'm not sure why. Dropped these.
+
+X = df_revised.drop("species", axis = 1)
+y = df_revised.species
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+svm6 = SVC(C = 12.0, kernel = "linear")       
+svm6.fit(X_train, y_train)
+print(accuracy_score(y_test, svm6.predict(X_test))*100)                 # Now accuracy is up from 63.6% to 65.1%
+
+
+# CONFUSION MATRIX
+
+m = confusion_matrix(y_test, svm6.predict(X_test))
+
+species = ["Adelie", "Chinstrap"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(species)
+y_label = axes.set_yticklabels(species)
+
+heatmap(m, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 5,
+        linecolor = 'g',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+# There are 13 instances where the model is predicting Adelie when the true value is Chinstrap
+# There is little we can do about this with a SVM model - it is necessary to change the model to improve accuracy
+
+# Last point - changing the test size got it to 72.7% accuracy (more acceptable than the initial 58.1%)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+svm7 = SVC(C = 12.0, kernel = "linear")       
+svm7.fit(X_train, y_train)
+print(accuracy_score(y_test, svm7.predict(X_test))*100)    # Now 72.7%
