@@ -1,0 +1,67 @@
+# Practice with classes - creating a class and using it
+# World records in athletics
+
+
+# CREATING THE CLASS
+
+import math 
+from math import ceil
+
+class DistanceRecord():
+    def __init__(self, distance, year, time):
+        self.distance = distance
+        self.year = year
+        self.time = time
+    def mile_percentage(self):
+        self.distance = float((self.distance/1609)*100)
+    def age(self):
+        self.year = int(2020 - self.year)
+    def integer_time(self):
+        self.time = ceil(self.time)
+        
+        
+# ADDING ENTRIES TO THE CLASS
+        
+hundred_metres = DistanceRecord(100, 2009, 9.58)
+two_hundred_metres = DistanceRecord(200, 2009, 19.19)
+four_hundred_metres = DistanceRecord(400, 2016, 43.03)
+eight_hundred_metres = DistanceRecord(800, 2012, 100.91)
+one_thousand_metres = DistanceRecord(1000, 1999, 131.96)
+
+
+# BASIC COMMANDS
+
+print(hundred_metres)                         # DistanceRecord object 
+
+print(hundred_metres.__dict__)                # {'distance': 100, 'year': 2009, 'time': 9.58}
+print(two_hundred_metres.__dict__)            # {'distance': 200, 'year': 2009, 'time': 19.19}
+print(four_hundred_metres.__dict__)           # {'distance': 400, 'year': 2016, 'time': 43.03}
+print(eight_hundred_metres.__dict__)          # {'distance': 800, 'year': 2012, 'time': 100.91}
+print(one_thousand_metres.__dict__)           # {'distance': 1000, 'year': 1999, 'time': 131.96}
+
+print(hundred_metres.time)                    # 9.58
+print(two_hundred_metres.time)                # 19.19
+print(four_hundred_metres.time)               # 43.03
+print(eight_hundred_metres.time)              # 100.91
+print(one_thousand_metres.time)               # 131.96 
+
+
+# CALLING THE FUNCTIONS IN THE CLASS
+
+two_hundred_metres.mile_percentage()
+print(two_hundred_metres.distance)            # e.g. 200m is about 12.430080795525171% of 1 mile
+
+eight_hundred_metres.mile_percentage()
+print(eight_hundred_metres.distance)          # e.g. 800m is about 49.720323182100685 of 1 mile
+
+hundred_metres.age()
+print(hundred_metres.year)                    # 11yrs ago since record
+
+one_thousand_metres.age()
+print(one_thousand_metres.year)               # 21yrs ago since record!
+
+four_hundred_metres.integer_time()            # 44s rounded up to the nearest integer
+print(four_hundred_metres.time)
+
+eight_hundred_metres.integer_time()           # 101s rounded up to the nearest integer
+print(eight_hundred_metres.time)
