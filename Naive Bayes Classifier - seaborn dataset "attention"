@@ -1,0 +1,133 @@
+# Naive Bayes Classifier
+# Seaborn dataset "attention"
+# Predicting 'Focused' or 'Unfocused' from score
+
+
+# SETUP
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.naive_bayes import GaussianNB
+
+import pandas
+from pandas import get_dummies
+from pandas import concat
+
+import seaborn as sns
+from seaborn import boxplot
+from seaborn import swarmplot
+from seaborn import heatmap
+
+df = sns.load_dataset("attention")
+
+
+# CLEAN DATA
+
+df.isnull().sum()     # No null values (luckily)
+
+
+# DATA WRANGLING
+
+df.drop({"Unnamed: 0", "subject", "solutions"}, axis = 1, inplace = True)    # Drop rendundant columms
+
+df.sort_values("score", inplace = True)                                      # Sort and reset index
+df = df.reset_index(drop = True)
+
+focused = get_dummies(data = df.attention, drop_first = True)                # Focused? 0 = No. 1 = Yes.
+
+df.drop("attention", axis = 1, inplace = True)                               # Drop dummied column
+df = concat([df, focused], axis = 1)                                         # Make a ML ready df
+
+
+# VISUALISATION
+
+ax = boxplot(x = df.focused, 
+             y = df.score, 
+             data = df, 
+             palette = "Set3",
+             width = 0.90,
+             linewidth = 1)
+
+ax = swarmplot(x = df.focused, 
+               y = df.score, 
+               data = df, color = ".05",
+               size = 9,
+               marker = "x",
+               linewidth = 1)
+
+plt.xlabel("Focused?")
+plt.ylabel("Score")
+plt.title("How score is affected by focus")
+
+plt.show()
+
+
+# MACHINE LEARNING MODEL 
+
+X = df.score.values             # I made X and y numpy arrays as errors were caused when I tried to pass a series
+y= df.focused.values
+
+X                               # Currently a 1D array
+
+X = X.reshape((len(X), 1))      # Reshape to a 2D array otherwise Python fires an error
+X                               # Check - Now a 2D array
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+
+
+# USE MODEL
+
+GNB.predict([[0.0]])            # 0 (not focused)
+GNB.predict([[10.0]])           # 1 (focused)
+GNB.predict([[5.5]])            # 0 (not focused)
+
+
+# INVESTIGATING THE PROBABILITY WITH NAIVE BAYES (ONE OF THE ADVANTAGES OF USING IT)
+
+GNB.predict_proba([[4.0]])      # e.g. a score of 4 implies: 91.9% chance unfocused and 8.1% chance of focused (rounded)
+GNB.predict_proba([[9.0]])      # e.g. a score of 9 implies: 3.7% chance unfocused and 96.3% chance of focused (rounded)
+
+GNB.predict_proba([[5.7]])      # e.g. a score of 5.7 implies: 51.9% chance unfocused and 48.1% chance of focused (rounded)
+                                # This is where the model is failing - the middle values (the boxplot shows the overlap)
+                                
+GNB.predict_proba(X_test)       # This shows that the model is generally decisive for the test values (the probability difference is large)
+
+
+# ACCURACY OF MODEL
+
+print(accuracy_score(y_test, GNB.predict(X_test))*100)        # 58.3% accurate (errors due to overlap in middle of data)
+
+
+# CONFUSION MATRIX
+
+m = confusion_matrix(y_test, GNB.predict(X_test))
+
+focused = ["0", "1"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(focused)
+y_label = axes.set_yticklabels(focused)
+
+heatmap(m, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 5,
+        linecolor = 'g',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()                                    # Key problem: Predicting 1 when it's 0 (four instances)
+
+# To improve the model it would be necessary to obtain more data - this is a very small dataset.
