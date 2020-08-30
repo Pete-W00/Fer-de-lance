@@ -1,0 +1,107 @@
+# Data Visualisation - Analysis of running results
+# Code contains 5 separate plots where I changed lots of the default settings - please feel free to use these templates in your own code
+
+
+# SETUP
+
+import pandas
+from pandas import DataFrame
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import numpy
+from numpy import polyfit
+
+import seaborn
+from seaborn import boxplot
+from seaborn import swarmplot
+from seaborn import countplot
+
+
+# CREATE DATAFRAME
+
+data = {"time": [1018, 1048, 1017, 1024, 1036, 1021, 1071, 1049, 1030, 1024, 1070],                  
+        "position": [2, 8, 6, 7, 4, 7, 13, 9, 2, 5, 20]}              
+
+df = DataFrame(data)
+
+df.sort_values("time", inplace = True)
+df = df.reset_index(drop = True)
+
+df.describe()                                  # mean time is 1037 seconds, mean position is 8 (rounded up)
+
+
+# SCATTER PLOT WITH LINE OF BEST FIT
+
+X = df.time.values     
+y = df.position.values
+
+plt.scatter(X, y, c = "g", marker = "x")
+
+m, c = polyfit(X, y, 1)
+plt.plot(X, m*X + c)                            # Regression line, m = gradient, c = y_intercept
+
+plt.title("Run position from time")
+plt.xlabel("time (seconds)")
+plt.ylabel("position")
+plt.show()
+
+
+# HISTOGRAM
+
+bins = [1000, 1020, 1040, 1060, 1080]
+
+plt.hist(X, bins, histtype = "bar", rwidth = 1.0, color = "g")
+
+plt.title("Distribution of run time")
+plt.xlabel("time (seconds)")
+plt.ylabel("count")
+plt.show()
+
+
+# PIE CHART
+
+achievement = ["sub 17", "between 17:00 and 17:30", "between 17:31 and 18:00"]                  
+count = [2, 7, 2]              
+colours = ['m', 'g', 'b']
+
+plt.pie(count,
+        labels = achievement,
+        colors = colours,
+        explode = (0.2, 0, 0),
+        shadow = True,
+        startangle = 180,
+        autopct = '%1.1f%%')
+
+plt.title("Achievements")
+
+plt.show()
+
+
+# BOXPLOT
+
+ax = boxplot(y = df.time, 
+             data = df, 
+             palette = "Set1",
+             width = 0.70,
+             linewidth = 1)
+
+ax = swarmplot(y = df.time, 
+               data = df, 
+               color = ".06",
+               size = 8,
+               marker = "o",
+               linewidth = 1)
+
+plt.ylabel("time")
+plt.title("Time Distribution")
+
+plt.show()
+
+
+# COUNTPLOT
+
+countplot(y = df.time,
+          data = df,
+          palette = "seismic")                 # Many options for palette depending upon your colour preference
