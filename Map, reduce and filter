@@ -1,0 +1,59 @@
+# Map, reduce and filter
+
+
+# Create the data set - this is a dataframe I've used in earlier code, so I'm just reusing it 
+
+import pandas
+from pandas import DataFrame
+
+data = {"time": [1018, 1048, 1017, 1024, 1036, 1021, 1071, 1049, 1030, 1024, 1070],                  
+        "position": [2, 8, 6, 7, 4, 7, 13, 9, 2, 5, 20]}              
+
+df = DataFrame(data)
+
+df.sort_values("time", inplace = True)
+df = df.reset_index(drop = True)
+
+
+# Map
+
+def product(a,b):
+    return a*b
+
+result1 = map(product, df.time, df.position)        # essentially multiplies the two columns
+
+print(result1)                                      # map object
+
+print(list(result1))                                # [6102, 2036, 7147, 7168, 5120, 2060, 4144, 8384, 9441, 21400, 13923]
+
+
+# Reduce
+
+from functools import reduce
+
+def product(a,b):
+    return a*b
+
+result2 = reduce(product, df.position)              # a product of all the positions (order doesn't matter for product)
+
+print(result2)                                      # 440294400
+
+
+# Filter
+
+def query(c):
+    if c < 1020:
+        print(c)
+        print("nice run")
+        
+result3 = filter(query, df.time)
+
+print(result3)                                      # filter object
+
+print(list(result3))                                # 1017, nice run, 1018, nice run
+
+
+# Concluding notes
+# Syntax for map, reduce and filter: map/reduce/filter(function, iterable elements)
+# reduce needs to be imported - I'm not sure why this is when map and filter are built in
+# With these examples I could shorten the code using lambda functions, but I think this looks noisy and hard to follow
