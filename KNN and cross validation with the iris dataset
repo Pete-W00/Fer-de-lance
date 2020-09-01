@@ -1,0 +1,96 @@
+# KNN and cross validation with the iris dataset - please feel free to use this code
+
+
+# Setup:
+
+import sklearn
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score
+
+import seaborn as sns
+from seaborn import heatmap
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+df = sns.load_dataset("iris")
+
+
+# KNN model
+
+X = df.drop("species", axis = 1)         # Input data set (plant dimensions)
+y = df.species                           # Output data set (species)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2)
+
+KNN = KNeighborsClassifier()             # Not passed a value of k yet - use cross validation to find the best value
+KNN.fit(X_train, y_train)
+
+
+# Accuracy
+
+percentage_accuracy = accuracy_score(y_test, KNN.predict(X_test))*100
+print(percentage_accuracy)                                                          # Returned 96.7%
+
+
+# Confusion Matrix
+
+m = confusion_matrix(y_test, KNN.predict(X_test))
+
+species = ["setosa", "versicolor", "virginica"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(species)
+y_label = axes.set_yticklabels(species)
+
+heatmap(m, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 5,
+        linecolor = 'g',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+
+# Cross validation
+
+# Test k values between 1 and 19 inclusive
+
+for k in range(1,20):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 5)        # Syntax c_v_s(model, independent, dependent, iterations)
+    print(cross_validation_score)                                                                                  # This loop gives a quick visualisation
+   
+# Use another loop for the mean values
+
+cvs_mean = []
+
+for k in range(1,20):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 5)
+    print(cross_validation_score.mean())
+    cvs_mean.append(cross_validation_score.mean())           # optimal values of k are 1 and 5
+    
+
+# A very quick visualisation of the k values
+
+plt.plot(range(1,20), cvs_mean)
+
+plt.xlabel("k")
+plt.ylabel("mean accuracy")
+plt.title("k trend")
+
+plt.show()  
+
+
+# Conclusion:
+# # Optimal at k = 1 and 5. Passing KNeighborsClassifier() automatically selected n_neighbors = 5. If it didn't, then simply change the model and rerun.
