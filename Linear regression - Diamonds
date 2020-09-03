@@ -1,0 +1,104 @@
+# Problem - predicting diamond prices
+
+
+# Setup
+
+import seaborn as sns
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import numpy
+from numpy import polyfit
+
+import sklearn
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+df = sns.load_dataset("diamonds")
+
+
+# Data cleaning and wrangling etc
+
+df.drop({"cut", "color", "clarity", "x", "y", "z"}, axis = 1, inplace = True)                  # Drop unused columms
+
+df.isnull().sum()                                                                              # No null values!
+
+
+# Visualisation
+
+f = lambda x: 100*x                                                                            # Transforming carat by *100 for scale purposes
+
+plt.scatter(df.carat.apply(f), df.price, label = "carat", marker = 'x', color = 'g')
+
+plt.scatter(df.depth, df.price, label = "depth", marker = 'o', color = 'b')
+
+plt.scatter(df.table, df.price, label = "table", marker = 'v', color = 'r')
+
+
+plt.xlabel("diamond properties")
+plt.ylabel("price")
+plt.title("Price distribution")
+plt.legend()
+
+plt.show()                                                                     # Carat is a good price indicator, but depth and table don't necessarily determine price 
+
+df.drop({"depth", "table"}, axis = 1, inplace = True)                          # Drop depth and table columms as uncorrelated to price
+
+
+plt.scatter(df.carat, df.price, marker = 'x', color = 'g', vmax = 20000)
+
+m, c = polyfit(df.carat, df.price, 1)
+plt.plot(df.carat, m*df.carat + c)                                             # Regression line, m = gradient, c = y_intercept
+
+plt.ylim(0, 20000)
+plt.xlabel("carat")
+plt.ylabel("price")
+plt.title("Price distribution")
+
+plt.show()
+
+
+# Linear Regression Model
+
+X = df.drop("price", axis = 1)          
+y = df.price                            
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR = LinearRegression()
+LR.fit(X_train, y_train)
+
+LR.score(X_test, y_test)               # Accuracy = 0.849 (3dp)
+
+print(LR.predict([[0.3]]))             # £68.76                              
+print(LR.predict([[0.4]]))             # £845.65
+print(LR.predict([[0.7]]))             # £3176.33                          
+print(LR.predict([[0.9]]))             # £4730.11
+
+# These predictions are not very accurate actually - the regression line is too steep 
+# Thus filter df for carat < 3.0 (blatant outliers), replot and refit model
+
+df2 = df[(df.carat < 3.0)]             # filter df by carat < 3.0
+
+df2 = df2.reset_index(drop = True)
+
+plt.scatter(df2.carat, df2.price, marker = 'x', color = 'g', vmax = 20000)
+
+m, c = polyfit(df2.carat, df2.price, 1)
+plt.plot(df2.carat, m*df2.carat + c)                  
+
+plt.ylim(0, 20000)
+plt.xlabel("carat < 3.0")
+plt.ylabel("price")
+plt.title("Price distribution")
+
+X = df2.drop("price", axis = 1)    
+y = df2.price                     
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR2 = LinearRegression()
+LR2.fit(X_train, y_train)
+
+LR2.score(X_test, y_test)     # Accuracy improved to 0.851
