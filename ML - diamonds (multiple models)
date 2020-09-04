@@ -1,0 +1,96 @@
+# Problem - predicting diamond cut quality
+# I used a few ML models
+
+import seaborn as sns
+from seaborn import boxplot
+
+import pandas
+from pandas import concat
+
+import sklearn
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+df = sns.load_dataset("Diamonds")
+
+df.drop({"color", "clarity", "x", "y", "z"}, axis = 1, inplace = True)
+
+df.cut.nunique()                                                                   # 4 visible types: "Good", "Very Good", "Premium", "Ideal"
+
+for i in df.cut:
+    if i == "Ideal":
+        pass
+    elif i == "Premium":
+        pass
+    elif i == "Good":
+        pass
+    elif i == "Very Good":
+        pass
+    else:
+        print(i)                                                                  # There is another type "Fair"
+                                                                                  # Presumed ranking: Fair, Good, Very Good, Ideal, Premium
+                                                                                  
+boxplot(df.cut, df.depth)                                                         # Depth affects cut. High depth implies a 'Fair' cut
+
+boxplot(df.cut, df.carat)                                                         # No obvious relationship between cut and carat
+
+boxplot(df.cut, df.table)                                                         # No obvious relationship between cut and table
+
+boxplot(df.cut, df.price)                                                         # No obvious relationship between cut and price
+
+
+# The only variable that seems to remotely affect cut is depth
+# There is a lot of overlap between cuts - drop to either "Premium" or "Fair" (e.g. best or worst) 
+
+df.drop({"carat", "table", "price"}, axis = 1, inplace = True)
+
+df2 = df[(df.cut == "Fair")]                                                      # Filter df by "Fair" 
+
+df3 = df[(df.cut == "Premium")]                                                   # Filter df by "Premium"
+
+df4 = concat([df2, df3])                                                          # Concat Fair + Premium then try a few models
+
+df4 = df4.reset_index(drop = True)
+
+boxplot(df4.cut, df4.depth)                                                       # High depths are not necessarily the best cut
+
+X = df4.depth.values
+y = df4.cut.values
+
+X = X.reshape((len(X), 1))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+print(accuracy_score(y_test, DTC.predict(X_test))*100)           # 98.5% accuracy
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+
+print(accuracy_score(y_test, GNB.predict(X_test))*100)           # 98.4% accuracy
+
+GNB.predict_proba([[64.0]])                                      # There is an issue at a depth of around 64.0. Fair = 38%, Premium = 62%
+
+svm = SVC()       
+svm.fit(X_train, y_train)
+
+print(accuracy_score(y_test, svm.predict(X_test))*100)           # 98.4% accuracy
+
+svm1 = SVC(C = 10.0)                                             # Try high gamma - only points very close to the line    
+svm1.fit(X_train, y_train)
+
+print(accuracy_score(y_test, svm1.predict(X_test))*100)          # 98.5% accuracy (increase of 0.01%)
+
+RFC = RandomForestClassifier(n_estimators = 15)                  # e.g. 15 decision trees
+RFC.fit(X_train, y_train)
+
+print(accuracy_score(y_test, RFC.predict(X_test))*100)           # 98.5% accuracy
+
+# Unable to increase the ML model accuracy past 98.5% without removing overlapping data - this would be tedious and not necessarily representative.
+# 98.5% is decent enough for using diamond depth to establish if a cut is good or bad
