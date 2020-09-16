@@ -1,0 +1,81 @@
+# Querying Seaborn dataset 'planets' with SQL
+
+
+# Get dataset from Python
+
+import seaborn as sns
+
+df = sns.load_dataset("planets")
+
+df.dropna(inplace = True)
+
+df = df.reset_index(drop = True)
+
+df.drop({"method", "number"}, axis = 1, inplace = True)
+
+df.to_excel('planets.xlsx', sheet_name = 'data', index = False)      # SAVE AS CSV FILE
+
+
+# SQL (all code from now on is SQL)
+
+CREATE DATABASE planets;
+SHOW DATABASES;
+USE planets;
+
+CREATE TABLE pdata(
+orbital_period FLOAT NOT NULL,
+mass FLOAT NOT NULL,
+distance FLOAT NOT NULL,
+year INT UNSIGNED NOT NULL);
+
+# NOW USE IMPORT WIZARD TO INSERT CSV FILE DATA INTO SQL (NB FIRST REFRESH SCHEMAS TO FIND TABLE) 
+
+SELECT*FROM pdata;    # To check it worked!
+
+
+# SQL Example Queries
+
+# Planets discovered after 2011?
+SELECT year 
+FROM pdata
+WHERE year > 2011
+ORDER BY year ASC;
+# 54 planets discovered between 2012 and 2014
+
+# Planets discovered before 2000?
+SELECT year FROM pdata
+WHERE year < 2000
+ORDER BY year ASC;
+# 26 planets discovered before 2000
+
+# Top 10 planets with the longest orbital period?
+SELECT orbital_period FROM pdata
+ORDER BY orbital_period DESC
+LIMIT 10;
+
+# Planets with an orbital period less than 400, mass greater than 10, distance greater than 100 and after year 2000?
+SELECT orbital_period, mass, distance, year 
+FROM pdata
+WHERE orbital_period < 400 AND mass > 10 AND distance > 100 AND year > 2000;
+# This only returns one planet
+
+# Average orbital period?
+SELECT
+AVG(orbital_period) AS average
+FROM pdata;
+# Average orbital period is 836 (nearest integer)
+
+# Planets below the average mass?
+# Two-part query
+SELECT
+AVG(mass) AS average
+FROM pdata;              # average mass = 2.5093200...
+
+SELECT mass
+FROM pdata
+WHERE mass < 2.509;      # a long list
+ 
+# Sum of total masses?
+SELECT SUM(mass) AS everything                  # The word after AS is unimportant
+FROM pdata;                 
+# All masses = 1250 (nearest integer)  
