@@ -1,0 +1,161 @@
+# Logistic Regression - improving ml model to 100% accuracy
+# Seaborn dataset 'Penguins' - using Flipper Length to predict Species
+
+# The two main improvements were - removing one category (species) of penguin 
+                                 - removing outliers from another species of penguin 
+
+# Result - perfect dataset for logistic regression (sigmoid curve fits data perfectly)
+
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
+
+import pandas
+from pandas import concat
+
+from matplotlib import pyplot as plt
+
+import seaborn as sns
+from seaborn import heatmap
+
+df = sns.load_dataset("penguins")
+
+df.dropna(inplace = True)
+
+df.drop(["island", "culmen_length_mm", "culmen_depth_mm", "body_mass_g", "sex"], axis = 1, inplace = True)
+
+
+plt.scatter(df.flipper_length_mm, df.species, marker = "x")   # This data is suited for logistic regression
+plt.xlabel("flipper length (mm)")
+plt.title("Penguin species vs their flipper length")
+plt.show()
+
+
+fl = df.flipper_length_mm
+
+df.drop(["flipper_length_mm"], axis = 1, inplace = True)
+
+df = df.apply(LabelEncoder().fit_transform)                     # Transform species into 0, 1 and 2
+
+df2 = concat([fl, df], axis = 1)
+
+X = df2.drop("species", axis = 1)   
+y = df2.species                     
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+percentage_accuracy_LR = LR.score(X_test, y_test)*100
+print(percentage_accuracy_LR)                                   # 85.07% accuracy
+
+
+# Refining the machine learning model - try dropping Chinstrap Penguins (species = 1)
+
+Adelie = df2[df2["species"] == 0]
+Gentoo = df2[df2["species"] == 2]
+
+df3 = concat([Adelie, Gentoo])
+df3 = df3.reset_index(drop = True)
+
+X = df3.drop("species", axis = 1)   
+y = df3.species                     
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+percentage_accuracy_LR = LR.score(X_test, y_test)*100
+print(percentage_accuracy_LR)                                 # 98.11% accuracy
+
+
+# Why the accuracy increase? Visually obvious:
+
+plt.scatter(df3.flipper_length_mm, df3.species, marker = "x")   
+plt.xlabel("flipper length (mm)")
+plt.title("Penguin species vs their flipper length")
+plt.show()
+
+
+m = confusion_matrix(y_test, LR.predict(X_test))
+
+sp = ["Adelie", "Gentoo"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(sp)
+y_label = axes.set_yticklabels(sp)
+
+heatmap(m, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 5,
+        linecolor = 'g',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()                                                 # One wrong prediction - model predicting Adelie when it is a Gentoo. Remove outliers (e.g. get rid of data overlap).
+
+
+Adelie2 = Adelie[(Adelie.flipper_length_mm < 200)]         # Removes outliers (could do this with Gentoo instead...or both if necessary)
+
+df4 = concat([Adelie2, Gentoo])
+df4 = df4.reset_index(drop = True)
+
+
+plt.scatter(df4.flipper_length_mm, df4.species, marker = "x")   
+plt.xlabel("flipper length (mm)")
+plt.title("Penguin species vs their flipper length")
+plt.show()                                                         # No overlap - should now be perfect
+
+X = df4.drop("species", axis = 1)   
+y = df4.species                     
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+percentage_accuracy_LR = LR.score(X_test, y_test)*100
+print(percentage_accuracy_LR)                                 # 100.0% accuracy! 
+
+# NB - I cut the flipper_length at 200mm for Adelies - these values were not necessarily outliers
+# I could have removed the obvious Gentoo outlier and Adelie's whose flipper length was less greater 205mm instead - see below
+
+
+Adelie3 = Adelie[(Adelie.flipper_length_mm < 205)]
+Gentoo2 = Gentoo[(Gentoo.flipper_length_mm > 205)]
+
+df5 = concat([Adelie3, Gentoo2])
+df5 = df5.reset_index(drop = True)
+
+plt.scatter(df5.flipper_length_mm, df5.species, marker = "x")   
+plt.xlabel("flipper length (mm)")
+plt.title("Penguin species vs their flipper length")
+plt.show()
+
+X = df5.drop("species", axis = 1)   
+y = df5.species                     
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR = LogisticRegression()
+LR.fit(X_train, y_train)
+
+percentage_accuracy_LR = LR.score(X_test, y_test)*100
+print(percentage_accuracy_LR)                                      # 100.0% accuracy! 
+
+# More scientifically precise
+# There's essentially now an asymptote at flipper_length = 205mm
