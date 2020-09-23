@@ -1,0 +1,65 @@
+# Unsupervised Learning - K-means clustering (a basic example that doesn't complicate things)
+
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.cluster import KMeans
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+import pandas
+from pandas import DataFrame
+from pandas import concat
+
+data = {"age": [21, 23, 24, 28, 44, 46, 49, 49, 72, 74, 76, 77],                 # Fictional data for simplicity
+        "fivek": [15, 16, 16, 14, 22, 24, 23, 25, 32, 36, 38, 33]}
+
+df = DataFrame(data)
+
+age = df.age       
+fivek = df.fivek
+
+plt.scatter(age, fivek, color = "g")
+plt.xlabel("age (years)")
+plt.ylabel("five kilometre time")
+plt.title("Racing and age")
+plt.show()
+
+kmeans = KMeans(n_clusters = 3)
+
+yp = kmeans.fit_predict(df)                                                      # assigns cluster values - e.g. separates data!
+yp                                                                               # array([2, 2, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1])
+
+data2 = {"age": [21, 23, 24, 28, 44, 46, 49, 49, 72, 74, 76, 77],
+        "fivek": [15, 16, 16, 14, 22, 24, 23, 25, 32, 36, 38, 33],
+        "yp": [2, 2, 2, 2, 0, 0, 0, 0, 1, 1, 1, 1]}
+
+df2 = DataFrame(data2)
+
+cluster1 = df2[yp == 0]
+cluster2 = df2[yp == 1]
+cluster3 = df2[yp == 2]
+
+plt.scatter(cluster1.age, cluster1.fivek, color = "blue")
+plt.scatter(cluster2.age, cluster2.fivek, color = "yellow")
+plt.scatter(cluster3.age, cluster3.fivek, color = "red")
+
+plt.xlabel("age (years)")
+plt.ylabel("five kilometre time")
+plt.title("Racing and age")
+plt.show()
+
+kmeans.cluster_centers_         # array([[47.0, 23.5], [74.75, 34.75], [24.0, 15.25]])
+
+plt.scatter(cluster1.age, cluster1.fivek, color = "blue")
+plt.scatter(cluster2.age, cluster2.fivek, color = "yellow")
+plt.scatter(cluster3.age, cluster3.fivek, color = "red")
+plt.scatter([47.0, 74.75, 24.0], [23.5, 34.75, 15.25], color = "black")         # Plots the centroids of each cluster
+
+plt.xlabel("age (years)")
+plt.ylabel("five kilometre time")
+plt.title("Racing and age")
+plt.show()                                  
+
+# Once the data are in clusters you can go on to analyse these clusters separately depending on the size of each cluster.
