@@ -1,0 +1,372 @@
+# Analysing shark attack fatalities (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - Vishnuraj Rajendran
+# Original source - https://www.kaggle.com/vishnurajrajendran/shark-attack-abstracted
+
+# Note - first half of code is in Python, second half is SQL (clearly separated)
+
+
+import pandas
+from pandas import read_csv
+from pandas import concat
+
+import sklearn
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score
+
+import seaborn
+from seaborn import heatmap
+
+from matplotlib import pyplot as plt
+
+df = read_csv("sharkattack.csv")
+
+
+df.isnull().sum()                                             # null values are mainly Country code and Continent (which I was going to drop anyway)
+
+df.dropna(inplace = True)
+
+df.drop({"Unnamed: 0", "Date", "Country code", "Continent", "Hemisphere"}, axis = 1, inplace = True)     # Date is unhelpful format. If one knows the country then country code, continent and hemisphere are unnecessary.
+
+df.Country.nunique()                                          # 113 countries
+
+df.Type.nunique()                                             # 6 Types
+
+df.Type.unique()                                              # Types are: Unprovoked', 'Provoked', 'Boat', 'Invalid', 'Sea Disaster','Boating'
+
+df.Activity.unique()                                          # 7 Activities are: 'Swimming', 'Other', 'Fishing', 'Diving', 'Surfing', 'Wading', 'Bathing'
+
+df.Fatal.unique()                                             # 3 types of fatality status: 'N', 'UNKNOWN', 'Y'
+
+df["Country"].value_counts()                                  # Quick look at country distribution - USA, Australia and South Africa have the most values
+
+df["Country"].value_counts()[:10].plot.bar(rot = 0)           # Due to the number of countries, I've only included the top 10
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Number of shark attacks")
+plt.title("Geographical distribution of shark attacks")
+plt.show()
+
+df2 = df.apply(LabelEncoder().fit_transform)                  # ML models don't take strings
+df2                                                           # 113 labels for countries, I might change this.
+
+X = df2.drop("Fatal", axis = 1)                               
+y = df2.Fatal                                                 
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))                   # Score = 0.76 (2dp)
+
+
+# Use top 3 countries only to try to increase model accuracy
+
+US = df[df["Country"] == "United States"]                                    
+AUS = df[df["Country"] == "Australia"]
+SA = df[df["Country"] == "South Africa"]
+
+df3 = concat([US, AUS, SA])
+df3 = df3.reset_index(drop = True)
+
+df4 = df3.apply(LabelEncoder().fit_transform)
+df4                                                           # NB Fatal: 0 = N, 1 = UNKNOWN, 2 = Y
+
+X = df4.drop("Fatal", axis = 1)      
+y = df4.Fatal                        
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))                  # Accuracy increased to 0.81
+
+
+# Improve accuracy by looking at the Type column
+
+df3["Type"].value_counts()                                   # I will try to improve the accuracy by reducing the Type to either Unprovoked or Provoked
+
+Unprovoked = df3[df3["Type"] == "Unprovoked"]                                    
+Provoked = df3[df3["Type"] == "Provoked"]
+
+df5 = concat([Unprovoked, Provoked])
+df5 = df5.reset_index(drop = True)
+
+df5                                                          # df5: Only 3 countries and only 2 Types
+
+df6 = df5.apply(LabelEncoder().fit_transform)
+
+X = df6.drop("Fatal", axis = 1)      
+y = df6.Fatal                        
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))                 # Accuracy increased to 0.88 (2dp)
+
+# I tried decreasing the activities - this actually decreases the model accuracy! df5 currently best.
+
+cm = confusion_matrix(y_test, DTC.predict(X_test))    
+
+fatal = ["N", "UNKNOWN", "Y"]                               # NB Fatal: 0 = N, 1 = UNKNOWN, 2 = Y
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(fatal)
+y_label = axes.set_yticklabels(fatal)
+
+heatmap(cm, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 2,
+        linecolor = 'r',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+# 58 instances where the model predicted N when it was Y
+# The model did not successfully predict any unknowns - I tried taking out unknowns (this reduces model accuracy by 4%)
+
+
+# OTHER MODELS
+
+# (1) RANDOM FOREST
+
+RFC = RandomForestClassifier(n_estimators = 10)       
+RFC.fit(X_train, y_train)
+accuracy_score(y_test, RFC.predict(X_test))           # RFC = 0.88 (2dp)
+
+
+(2) NAIVE BAYES CLASSIFIER
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+accuracy_score(y_test, GNB.predict(X_test))          # GNB = 0.75 (low!)
+
+
+(3) SUPPORT VECTOR MACHINE
+
+svm = SVC()       
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))          # SVM = 0.89375. SVM current best. Changing C values in SVM hasn't improved the accuracy beyond 0.89375.
+
+
+(4) k-Nearest Neighbours
+
+KNN = KNeighborsClassifier()                         # Not passed a value of k yet - use cross validation to find the best value
+KNN.fit(X_train, y_train)
+accuracy_score(y_test, KNN.predict(X_test))          # KNN = 0.87
+
+for k in range(1, 15):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 4)
+    print(cross_validation_score.mean())
+
+# optimal values of k are 2, 4, 5, 6 and 8
+
+KNN2 = KNeighborsClassifier(n_neighbors = 4)                   
+KNN2.fit(X_train, y_train)
+accuracy_score(y_test, KNN2.predict(X_test))                 # KNN2 = 0.89375 (this seems to be the highest model accuracy available)
+
+
+cm2 = confusion_matrix(y_test, KNN2.predict(X_test))    
+
+fatal = ["N", "UNKNOWN", "Y"]                                # NB Fatal: 0 = N, 1 = UNKNOWN, 2 = Y
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(fatal)
+y_label = axes.set_yticklabels(fatal)
+
+heatmap(cm2, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 2,
+        linecolor = 'r',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+# This model likes predicting 'N' when it's actually 'UNKNOWN' or 'Y' - 4 nearest neighbours majority is always 'N'
+# On the plus side there are no instances where the model predicts 'UNKNOWN' or 'Y' when it's actually an 'N'
+# This model is only fractionally better than the DTC from earlier (NB: SVM model gives same cm)
+# It's an impractical model because it pretty much always predicts 'N'
+
+
+# Relook at RFC model (1)
+
+cm3 = confusion_matrix(y_test, RFC.predict(X_test))    
+
+fatal = ["N", "UNKNOWN", "Y"]                                # NB Fatal: 0 = N, 1 = UNKNOWN, 2 = Y
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(fatal)
+y_label = axes.set_yticklabels(fatal)
+
+heatmap(cm3, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 2,
+        linecolor = 'r',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+# This model at least allows predictions of both 'Y' and 'N'
+# Make predictions - use RFC model as KNN2 and svm seem to always predict 'N' (= [0])
+.
+.
+.
+# I tried many predictions, the RFC basically never predicts anything except 'N' - the only case I could find for 'Y' was below:
+
+print(RFC.predict([[0, 1, 0]]))   # [2]
+
+# This scenario is: Australia, Unprovoked, Bathing and it yields [2] ('Y') - a fatal attack.
+
+
+
+# I am now putting df5 into SQL for more queries
+
+df5.to_excel("Shark.xlsx", sheet_name = 'data', index = False)         # Save as a csv file otherwise SQL ignores it
+
+# ***All code is now SQL***
+
+CREATE DATABASE sharks;
+SHOW DATABASES;
+USE sharks;
+
+CREATE TABLE sharkdata(
+Country VARCHAR(60) NOT NULL,
+Type VARCHAR(30) NOT NULL,
+Activity VARCHAR(60) NOT NULL,
+Fatal ENUM('Y', 'N', 'UNKNOWN') NOT NULL);
+
+# Use import wizard to put df5 into SQL
+
+SELECT*FROM sharkdata;                               # to check it worked!
+
+
+# Queries
+
+# Which activity is the most dangerous?
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Bathing';          # 32 fatalities from bathing
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Diving';           # 52 fatalities from diving
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Fishing';          # 43 fatalities from fishing
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Surfing';          # 37 fatalities from surfing
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Swimming';         # 166 fatalities from swimming
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Wading';           # 7 fatalities from wading
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Activity = 'Other';            # 123 fatalities from 'other'
+
+# Thus swimming is the most dangerous activity - next follow-on question is which country is the most dangerous to swim in?
+
+SELECT Country, Activity, Fatal
+FROM sharkdata
+WHERE Country = 'United States' AND Activity = 'Swimming' AND Fatal = 'Y';      # 52 USA swimming fatalities
+
+SELECT Country, Activity, Fatal
+FROM sharkdata
+WHERE Country = 'Australia' AND Activity = 'Swimming' AND Fatal = 'Y';          # 75 AUS swimming fatalities
+
+SELECT Country, Activity, Fatal
+FROM sharkdata
+WHERE Country = 'South Africa' AND Activity = 'Swimming' AND Fatal = 'Y';       # 39 SA swimming fatalities
+
+# So Australia is the most dangerous place to swim.
+
+# The next question is about the ratio of provoked attacks to unprovoked attacks that were fatalities. 
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y';                             # 460 fatalities altogether
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Type = 'Unprovoked';     # 455 Unprovoked fatalities
+
+SELECT COUNT(*) 
+FROM sharkdata
+WHERE Fatal = 'Y' AND Type = 'Provoked';       # 5 provoked fatalities
+
+# So the ratio of provoked attacks to unprovoked attacks that were fatalities is 5:455 or 1:91. e.g. mostly unprovoked fatalities.
+
+# Next query is investigating the UNKNOWN fatalities
+
+SELECT Country, Type, Activity, Fatal
+FROM sharkdata
+WHERE Fatal = 'UNKNOWN';
+
+# No unknowns from South Africa
+# Only one provoked unknown
+# A lot of the activities are listed as 'other' suggesting that this is also not known
+
+# Last query (just a random specific one) - were there any provoked wading fatalities?
+
+SELECT Country, Type, Activity, Fatal
+FROM sharkdata
+WHERE Type = 'Provoked' AND Activity = 'Wading' AND Fatal = 'Y';
+
+# No. Same query, but unprovoked wading fatalities:
+
+SELECT Country, Type, Activity, Fatal
+FROM sharkdata
+WHERE Type = 'Unprovoked' AND Activity = 'Wading' AND Fatal = 'Y';
+
+# Seven unprovoked fatalities from wading.
+
+# In conclusion, I could run some more advanced queries if I brought back some of the other countries (there are another 110).
+# The disadvantage to including more countries is that it weakens the ML model.
