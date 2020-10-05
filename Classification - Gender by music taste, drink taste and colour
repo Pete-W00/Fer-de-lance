@@ -1,0 +1,410 @@
+# Gender classification based on preferences (dataset from Kaggle)
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - hb20007
+# Original source - https://www.kaggle.com/hb20007/gender-classification
+
+
+import pandas
+from pandas import read_csv
+from pandas import DataFrame
+
+import sklearn
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+
+import seaborn
+from seaborn import heatmap
+
+from matplotlib import pyplot as plt
+
+df = read_csv("GClass.csv")
+
+df.isnull().sum()                                                            # No null values
+
+df.rename({"Favorite Color": "Colour",
+           "Favorite Music Genre": "Genre",
+           "Favorite Beverage": "Alcohol",
+           "Favorite Soft Drink": "Soft"}, axis = 1, inplace = True)         # Simplify names
+           
+
+print(df.Colour.nunique())                     # 3 Colours
+print(df.Genre.nunique())                      # 7 (Music) genres
+print(df.Alcohol.nunique())                    # 6 Alcoholic drinks
+print(df.Soft.nunique())                       # 4 Soft drinks
+print(df.Gender.nunique())                     # 2 Genders (Male, Female) - the variable to be predicted
+
+print(df["Colour"].value_counts())             # Cool = 37, Warm = 22, Neutral = 7
+print(df["Genre"].value_counts())              # Rock = 19, Pop = 17, Electronic = 8, Hip hop = 8, R&B and soul = 6, Folk/Traditional = 4, Jazz/Blues = 4   
+print(df["Alcohol"].value_counts())            # Doesn't drink = 14, Beer = 13, Other = 11, Wine = 10, Whiskey = 9, Vodka = 9
+print(df["Soft"].value_counts())               # Coca Cola/Pepsi = 32, Fanta = 14, 7UP/Sprite = 13, Other = 7
+print(df["Gender"].value_counts())             # Male = Female = 33 (The category to be predicted is balanced)
+
+
+# I want visualisations of Genre and Alcohol (more than 4 types) - I will use piecharts:
+
+# Genre (of music)
+
+music = ["Rock", "Pop", "Electronic", "Hiphop", "RandB/soul", "Folk/Traditional", "Jazz/Blues"]
+
+plt.pie(df["Genre"].value_counts(),
+        labels = music,
+        startangle = 180,
+        shadow = True,
+        autopct = "%1.1f%%",
+        explode = (0, 0, 0, 0.3, 0, 0, 0))
+
+plt.show()
+
+
+# Alcohol
+
+drink = ["Nondrinker", "Beer", "Other", "Wine", "Whiskey", "Vodka"]
+
+plt.pie(df["Alcohol"].value_counts(),
+        labels = drink,
+        startangle = 90,
+        shadow = True,
+        autopct = "%1.1f%%",
+        explode = (0.3, 0, 0, 0, 0, 0))
+
+plt.show()
+
+
+df2 = df.apply(LabelEncoder().fit_transform)     
+df2                                                  # 0 = Female, 1 = Male
+
+X = df2.drop("Gender", axis = 1)                               
+y = df2.Gender                                                 
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+print(len(X_train))       # 52 (samples)
+print(len(y_train))       # 52
+print(len(X_test))        # 14
+print(len(y_test))        # 14
+
+accuracy_score(y_test, DTC.predict(X_test))              # Score = 0.64 (2dp)
+
+
+m = confusion_matrix(y_test, DTC.predict(X_test))
+
+gender = ["female", "male"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(gender)
+y_label = axes.set_yticklabels(gender)
+
+heatmap(m, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 7,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()                                      # This is not great at the moment. The trace isn't high enough (9).
+
+
+plt.figure(figsize = (40, 40))
+
+sklearn.tree.plot_tree(DTC, 
+                       max_depth = None,                      # depth of current tree is 9                      
+                       feature_names = X.columns, 
+                       class_names = True,                    
+                       label = 'all', 
+                       filled = True, 
+                       impurity = True, 
+                       node_ids = True,                       
+                       proportion = False, 
+                       rounded = True, 
+                       precision = 5, 
+                       ax = None,
+                       fontsize = 20)
+
+plt.show()
+
+
+DTC2 = DecisionTreeClassifier(max_depth = 5, min_samples_leaf = 5)         
+DTC2.fit(X_train, y_train)
+accuracy_score(y_test, DTC2.predict(X_test))                          # Score improved to 0.93 (2dp)
+
+
+m2 = confusion_matrix(y_test, DTC2.predict(X_test))
+
+gender = ["female", "male"]
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(gender)
+y_label = axes.set_yticklabels(gender)
+
+heatmap(m2, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 7,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()                                      # This is much better. Trace = 13. Only 1 misclassification.
+
+
+plt.figure(figsize = (40, 40))
+
+sklearn.tree.plot_tree(DTC2, 
+                       max_depth = None,                                           
+                       feature_names = X.columns, 
+                       class_names = True,                    
+                       label = 'all', 
+                       filled = True, 
+                       impurity = True, 
+                       node_ids = True,                       
+                       proportion = False, 
+                       rounded = True, 
+                       precision = 5, 
+                       ax = None,
+                       fontsize = 20)
+
+plt.show()
+
+
+# Other models
+
+# Random Forest
+
+RFC = RandomForestClassifier()       
+RFC.fit(X_train, y_train)
+
+accuracy_score(y_test, RFC.predict(X_test))     # 0.36 (2dp) - very low. I'll try to improve it.
+
+# Use cross validation to work out the best number of decision trees
+
+for k in range(1,20):
+    cross_validation_score = cross_val_score(RandomForestClassifier(n_estimators = k*10), X_test, y_test, cv = 5)                                
+    print(cross_validation_score.mean())
+    
+# Optimality at n_estimators = 20 (this changes sometimes if you rerun the code)
+
+RFC2 = RandomForestClassifier(n_estimators = 20)
+RFC2.fit(X_train, y_train)
+
+accuracy_score(y_test, RFC2.predict(X_test))            # 0.5
+
+# Changing the depth of the tree and the minimum samples increases the accuracy to around 0.79 (at best)
+
+RFC3 = RandomForestClassifier(n_estimators = 20, max_depth = 6, min_samples_leaf = 5)
+RFC3.fit(X_train, y_train)
+accuracy_score(y_test, RFC3.predict(X_test))            # 0.79 (at best)
+
+model = GridSearchCV(RandomForestClassifier(),
+                     {"n_estimators": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+                      "max_depth" : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},   # Parameters to test
+                       cv = 3)
+                       
+model.fit(X_test, y_test)
+
+cvresults = DataFrame(model.cv_results_)
+cvresults
+
+cvresults_compact = cvresults[["param_max_depth", 
+                               "param_n_estimators", 
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+                               
+cvresults_compact
+
+for i in cvresults_compact.mean_test_score:
+    if i > 0.76:
+        print(i)        # max mean score is 0.7666666666666666
+        
+        
+list1 = []
+
+for i in cvresults_compact.mean_test_score:
+    if i > 0.76:
+        list1.append(i)
+        
+print(len(list1))                          # 32 combinations give a mean test score of 0.7666666666666666...
+
+# Choose one example with best mean test score (this changes if code is reran): max_depth = 15, n_estimators = 90
+
+RFC4 = RandomForestClassifier(n_estimators = 90, max_depth = 15)
+RFC4.fit(X_train, y_train)
+accuracy_score(y_test, RFC4.predict(X_test))                            # Accuracy stuck on 0.5
+
+RFC5 = RandomForestClassifier(n_estimators = 90, max_depth = 15, min_samples_leaf = 5)
+RFC5.fit(X_train, y_train)
+accuracy_score(y_test, RFC5.predict(X_test))                           # 0.71 (at best)
+
+# Even with cross validation, the model accuracy is at best 0.71, so it did not outperform decision tree.
+
+
+# KNN
+
+# Use cross-validation to find the best value of k
+
+for k in range(1, 10):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 6)
+    print(cross_validation_score.mean())
+    
+# Optimality at k = 3 or k = 5
+
+KNN = KNeighborsClassifier(n_neighbors = 3)
+KNN2 = KNeighborsClassifier(n_neighbors = 5)
+
+KNN.fit(X_train, y_train)
+KNN2.fit(X_train, y_train)
+
+print(accuracy_score(y_test, KNN.predict(X_test)))            # 0.5
+print(accuracy_score(y_test, KNN2.predict(X_test)))           # 0.57 (2dp)
+
+# Not a good model choice
+
+
+# SVM
+
+model2 = GridSearchCV(SVC(),
+                     {"kernel": ["linear", "rbf"],
+                      "C" : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},   
+                       cv = 5)
+                       
+model2.fit(X_test, y_test)
+
+cvresults2 = DataFrame(model2.cv_results_)
+cvresults2
+
+cvresults2_compact = cvresults2[["param_C", 
+                               "param_kernel", 
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+                               
+cvresults2_compact   # best mean test score is 0.766667 (for this run of the code)
+                     # one best example is: kernel = linear, C = 3
+                     
+svm = SVC(kernel = "linear", C = 3)
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))    # 0.57 (2dp) - as accurate as KNN, but not very good.
+
+
+# Naive Bayes Classifier 
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+accuracy_score(y_test, GNB.predict(X_test))   # 0.71 (2dp)
+
+GNB.predict_proba([[0, 6, 3, 0]])             # One can see the problems - this prediction - Female = 58.9%, Male = 41.1% - indecisive
+
+
+# Best model is Decision Tree: DTC2 = DecisionTreeClassifier(max_depth = 5, min_samples_leaf = 5)         
+# Looking at it carefully, the tree doesn't even use the "Colour" column in it's process, so I will try dropping this
+
+df.drop({"Colour"}, axis = 1, inplace = True)
+
+df3 = df.apply(LabelEncoder().fit_transform)
+
+X = df3.drop("Gender", axis = 1)                               
+y = df3.Gender                                                 
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC2 = DecisionTreeClassifier(max_depth = 5, min_samples_leaf = 5)         
+DTC2.fit(X_train, y_train)
+accuracy_score(y_test, DTC2.predict(X_test))                          # Score still 0.93 (2dp)
+
+
+# Change test_size to 10%
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+
+DTC2 = DecisionTreeClassifier(max_depth = 5, min_samples_leaf = 5)         
+DTC2.fit(X_train, y_train)
+accuracy_score(y_test, DTC2.predict(X_test))                          # model 100% accurate!
+
+
+# Predictions!
+
+# Electronic music, beer and 7UP/Sprite? 
+print(DTC2.predict([[0, 0, 0]]))
+# Male
+
+# Folk/Traditional, Doesn't drink and Coca Cola/Pepsi? 
+print(DTC2.predict([[1, 1, 1]]))
+# Male
+
+# Rock, vodka and Fanta?
+print(DTC2.predict([[6, 3, 2]]))
+# Female
+
+# I noticed that the sequence 6, 3, 1 could yield male or female (row 4 and row 61 of the dataset)
+# That is Rock, vodka and Coca Cola/Pepsi could yield male or female
+
+
+# Last thing - SQl Queries - just for my own practice (all subsequent code is SQL)
+
+CREATE DATABASE gclass;
+SHOW DATABASES;
+USE gclass;
+
+CREATE TABLE genderclassdata(
+Favorite_Color VARCHAR(20) NOT NULL,
+Favorite_Music_Genre VARCHAR(30) NOT NULL,
+Favorite_Beverage VARCHAR(30) NOT NULL,
+Favorite_Soft_Drink VARCHAR(60) NOT NULL,
+Gender ENUM('F', 'M') NOT NULL);
+
+# Use import wizard to put csv file into SQL
+
+SELECT*FROM genderclassdata;    # to check it worked!
+
+
+# Run a few queries
+
+# How many females prefer Rock or R&B and soul?
+SELECT Favorite_Music_Genre, Gender
+FROM genderclassdata
+WHERE Favorite_Music_Genre LIKE 'R%' AND Gender = "F";     # LIKE function highlights strings starting with 'R' in this case
+# 12 females - 10 for Rock and 2 for R&B and soul
+
+ 
+# What is the total number of people who prefer music that is not Rock?
+SELECT Favorite_Music_Genre
+FROM genderclassdata
+WHERE Favorite_Music_Genre != "Rock";
+# 47 people prefer music other than Rock (so 66 - 47 = 19 prefer Rock)
+
+
+# How many different favourite beverages are there?
+# I know the answer to this query already as I used the .nunique() in Python, but to do this in SQL:
+SELECT DISTINCT Favorite_Beverage
+FROM genderclassdata
+ORDER BY Favorite_Beverage ASC;
+# So the answer is as expected (6 unique values)
