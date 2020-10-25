@@ -1,0 +1,1018 @@
+# Mushroom classification (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - UCI Machine Learning
+# Original source - https://www.kaggle.com/uciml/mushroom-classification
+
+
+# Setup
+
+import pandas
+from pandas import read_csv
+from pandas import concat
+from pandas import DataFrame
+
+import sklearn
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+
+import seaborn
+from seaborn import heatmap
+
+from matplotlib import pyplot as plt
+
+df = read_csv("mushrooms.csv")
+
+df      # 8124 rows × 23 columns
+
+
+# Information about dataset (source https://www.kaggle.com/uciml/mushroom-classification)
+
+''' 
+
+(classes: edible=e, poisonous=p)
+
+cap-shape: bell=b,conical=c,convex=x,flat=f, knobbed=k,sunken=s
+
+cap-surface: fibrous=f,grooves=g,scaly=y,smooth=s
+
+cap-color: brown=n,buff=b,cinnamon=c,gray=g,green=r,pink=p,purple=u,red=e,white=w,yellow=y
+
+bruises: bruises=t,no=f
+
+odor: almond=a,anise=l,creosote=c,fishy=y,foul=f,musty=m,none=n,pungent=p,spicy=s
+
+gill-attachment: attached=a,descending=d,free=f,notched=n
+
+gill-spacing: close=c,crowded=w,distant=d
+
+gill-size: broad=b,narrow=n
+
+gill-color: black=k,brown=n,buff=b,chocolate=h,gray=g, green=r,orange=o,pink=p,purple=u,red=e,white=w,yellow=y
+
+stalk-shape: enlarging=e,tapering=t
+
+stalk-root: bulbous=b,club=c,cup=u,equal=e,rhizomorphs=z,rooted=r,missing=?
+
+stalk-surface-above-ring: fibrous=f,scaly=y,silky=k,smooth=s
+
+stalk-surface-below-ring: fibrous=f,scaly=y,silky=k,smooth=s
+
+stalk-color-above-ring: brown=n,buff=b,cinnamon=c,gray=g,orange=o,pink=p,red=e,white=w,yellow=y
+
+stalk-color-below-ring: brown=n,buff=b,cinnamon=c,gray=g,orange=o,pink=p,red=e,white=w,yellow=y
+
+veil-type: partial=p,universal=u
+
+veil-color: brown=n,orange=o,white=w,yellow=y
+
+ring-number: none=n,one=o,two=t
+
+ring-type: cobwebby=c,evanescent=e,flaring=f,large=l,none=n,pendant=p,sheathing=s,zone=z
+
+spore-print-color: black=k,brown=n,buff=b,chocolate=h,green=r,orange=o,purple=u,white=w,yellow=y
+
+population: abundant=a,clustered=c,numerous=n,scattered=s,several=v,solitary=y
+
+habitat: grasses=g,leaves=l,meadows=m,paths=p,urban=u,waste=w,woods=d 
+
+'''
+
+
+# The problem - predicting if your mushroom is safe or dangerous to eat
+
+df.isnull().sum()                     # No null values
+
+print(df.columns)                     # Gives all the column headings
+
+df["class"]                           # Target column
+
+df["class"].nunique()                 # edible = e, poisonous = p
+
+df[["class",                          # I couldn't find a more elegant way to code this - gives unique values for each column (can be done in SQL instead)
+    "cap-shape",
+    "cap-surface",
+    "cap-color",
+    "bruises",
+    "odor",
+    "gill-attachment", 
+    "gill-spacing", 
+    "gill-size", 
+    "gill-color", 
+    "stalk-surface-below-ring", 
+    "stalk-color-above-ring", 
+    "stalk-color-below-ring", 
+    "veil-type", 
+    "veil-color", 
+    "ring-number", 
+    "ring-type", 
+    "spore-print-color", 
+    "population", 
+    "habitat"]].nunique()
+
+x1 = ["class",                   
+    "cap-shape",
+    "cap-surface",
+    "cap-color",
+    "bruises",
+    "odor",
+    "gill-attachment", 
+    "gill-spacing", 
+    "gill-size", 
+    "gill-color", 
+    "stalk-surface-below-ring", 
+    "stalk-color-above-ring", 
+    "stalk-color-below-ring", 
+    "veil-type", 
+    "veil-color", 
+    "ring-number", 
+    "ring-type", 
+    "spore-print-color", 
+    "population", 
+    "habitat"]
+
+y1 = [2, 6, 4, 10, 2, 9, 2, 2, 2, 12, 4, 9, 9, 1, 4, 3, 5, 9, 6, 7]             # Counts for each column heading
+
+plt.bar(x1, y1, color = 'g')                                                    # Bar plot for unique values of each column heading
+plt.xticks(rotation = 90)
+plt.xlabel("Mushroom properties")
+plt.ylabel("Number of different categories")
+plt.title("Mushrooms")
+plt.show()
+
+df2 = df.apply(LabelEncoder().fit_transform)            # p = 1, e = 0
+df2
+
+X = df2.drop("class", axis = 1)      
+y = df2["class"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))            # 100% accurate with Decision Tree
+
+RFC = RandomForestClassifier()       
+RFC.fit(X_train, y_train)
+
+accuracy_score(y_test, RFC.predict(X_test))            # 100% accurate with Random Forest
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+
+accuracy_score(y_test, GNB.predict(X_test))            # 92.2% (1dp) accurate with GaussianNB
+
+len(X_test)                                            # 1625 elements
+
+ypred = GNB.fit(X_train, y_train).predict(X_test)
+
+ypred                                                  # Gives predictions for X_test. array([0, 1, 1, ..., 1, 1, 1])
+
+
+edible = []
+poisonous = []
+
+for i in ypred:
+    if i == 0:
+        edible.append(i)
+    else:
+        poisonous.append(i)
+
+print(len(edible))                # 826 edible mushrooms
+print(len(poisonous))             # 799 poisonous mushrooms
+
+# The ml model is predicting slightly more edible mushrooms than poisonous mushrooms (0.5083 : 0.4917)
+
+
+# What are the probabilities of each prediction?
+
+prediction_probabilities = GNB.predict_proba(X_test).round(3)         # round to avoid unhelpful outputs like 1.000e+00
+prediction_probabilities                                              # column1 = [0], column2 = [1]
+
+for i in prediction_probabilities:
+    print(i)                          
+
+# There are probabilities in here that are almost parity, e.g. [0.49, 0.51]
+# Obviously if you are going to eat a mushroom, the above odds are too dangerous
+# Probabiities that are near parity reduce the accuracy of the ml model
+
+cm = confusion_matrix(y_test, GNB.predict(X_test))
+cm    
+
+# In context the big problem here is that the model is predicting edible mushrooms 55 times when they are actually poisonous!
+# Best not use GNB model!
+
+
+# KNN
+
+# Use cross-validation to find the best value of k
+
+for k in range(1, 20):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 8)
+    print(cross_validation_score.mean())
+    
+# Optimality is actually k = 1, but it is impractical to use a single neighbour to predict output. Next best is k = 3.
+
+KNN = KNeighborsClassifier(n_neighbors = 3)
+
+KNN.fit(X_train, y_train)
+
+accuracy_score(y_test, KNN.predict(X_test))         # An impressive accuracy, 0.998 (3dp)
+
+
+# The default leaf_size is 30, so I will try and change this parameter to obtain 1.0 accuracy
+
+for k in range(1, 20):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = 3, leaf_size = 10*k), X_test, y_test, cv = 8)
+    print(cross_validation_score.mean())
+    
+# Leaf size (with k = 3) is best at 50, 60, 70, 80
+
+KNN2 = KNeighborsClassifier(n_neighbors = 3, leaf_size = 50)
+KNN2.fit(X_train, y_train)
+
+accuracy_score(y_test, KNN2.predict(X_test))         # The same. Accuracy is 0.998 (3dp)
+
+cm1 = confusion_matrix(y_test, KNN.predict(X_test))
+cm2 = confusion_matrix(y_test, KNN2.predict(X_test)) 
+
+print(cm1)
+print(cm2)
+
+# These KNN models are better than GNB because there are no instances where the models are predicting edible when poisonous
+# There are 3 instances where the model is predicting poisonous when edible, but in context this is the better way around
+# NB cms are the same, so leaf size didn't change this, just the processing speed
+
+
+# SVM
+
+# Use Grid Search CV to determine the best kernel and gamma regularization
+
+model = GridSearchCV(SVC(),
+                     {"kernel": ["linear", "rbf"],
+                      "C": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},   
+                       cv = 3)
+                       
+model.fit(X_test, y_test)         # This takes some time
+
+cvresults = DataFrame(model.cv_results_)
+cvresults
+
+cvresults_compact = cvresults[["param_C", 
+                               "param_kernel", 
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+                               
+cvresults_compact
+
+
+# Rank 1 is: kernel = rbf and C = 10
+
+svm = SVC(kernel = "rbf", C = 10)
+svm.fit(X_train, y_train)
+
+accuracy_score(y_test, svm.predict(X_test))     # Accuracy at 1.0
+
+
+'''
+Summary:
+(1) Models are generally very accurate
+(2) Decision tree and random forest are 100% accurate
+(3) Support vector machine svm = SVC(kernel = "rbf", C = 10) is 100% accurate
+(4) K nearest neighbours with k = 3 gives accuracy up to 0.998 (3dp)
+(5) Crucially for KNN there are no instances where the models are predicting edible when poisonous
+(6) Naive Bayes accuracy is 0.922 (3dp), but predicts edible mushrooms when they are poisonous!
+
+Next steps:
+The previous model was binary: mushroom was edible or poisonous. Now I will try to predict habitat (7 categories)
+'''
+
+
+# Predicting habitats
+
+# First thing to check is that the habitat categories are roughly even - otherwise it is best to drop some to avoid bias
+
+print(df["habitat"].value_counts())      
+
+# These are quite uneven! There are currently biases towards 'd' (woods)
+# I want a random sample of 100 from each category
+
+woods = df[df["habitat"] == "d"]
+
+woods                                        # Currently 3148 values - I want a random sample of 100
+
+woods_sample = woods.sample(n = 100)
+
+
+# Now repeat for others, concat and encode new dataframe
+# habitat: grasses = g,leaves = l, meadows = m, paths = p, urban = u, waste = w, woods = d 
+
+grasses = df[df["habitat"] == "g"] 
+leaves = df[df["habitat"] == "l"] 
+meadows = df[df["habitat"] == "m"] 
+paths = df[df["habitat"] == "p"] 
+urban = df[df["habitat"] == "u"] 
+waste = df[df["habitat"] == "w"]
+
+grasses_sample = grasses.sample(n = 100)
+leaves_sample = leaves.sample(n = 100)
+meadows_sample = meadows.sample(n = 100)
+paths_sample = paths.sample(n = 100)
+urban_sample = urban.sample(n = 100)
+waste_sample = waste.sample(n = 100)
+
+df3 = concat([grasses_sample,
+              leaves_sample,
+              meadows_sample,
+              paths_sample,
+              urban_sample,
+              waste_sample,
+              woods_sample])
+
+df3 = df3.reset_index(drop = True)
+
+df3                                                    # A fully sampled dataframe. There should be 100 entries for each habitat. Easy to check.
+
+print(df3["habitat"].value_counts())                   # Now even categories for each habitat! (Disadvantage is data loss)
+
+df4 = df3.apply(LabelEncoder().fit_transform)    
+df4
+
+print(df3.habitat.unique())
+print(df4.habitat.unique())      
+
+# g = 1, l = 2, m = 3, p = 4, u = 5, w = 6, d = 0
+# habitat: grasses = g, leaves = l, meadows = m, paths = p, urban = u, waste = w, woods = d 
+
+X = df4.drop("habitat", axis = 1)      
+y = df4["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))         # 78.6% (1dp) accurate with Decision Tree (changes when code reran)  
+
+
+cfm = confusion_matrix(y_test, DTC.predict(X_test))
+
+land_type = ['g', 'l', 'm', 'p', 'u', 'w', 'd']
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(land_type)
+y_label = axes.set_yticklabels(land_type)
+
+heatmap(cfm, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 4,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+# The biggest problem at the moment is that the model predicts 'l' (leaves) when it is actually other habitats
+# Visualise tree to see if this can be changed...
+
+
+plt.figure(figsize = (50, 50))
+
+sklearn.tree.plot_tree(DTC, 
+                       max_depth = None,                                           
+                       feature_names = X.columns, 
+                       class_names = True,                    
+                       label = 'all', 
+                       filled = True, 
+                       impurity = True, 
+                       node_ids = True,                       
+                       proportion = False, 
+                       rounded = True, 
+                       precision = 5, 
+                       ax = None,
+                       fontsize = 20)
+
+plt.show()
+
+# This doesn't produce the best diagram, but a quick glance suggests that the model is overfitting
+# The depth is too high and the min_samples_leaf = 1
+# Use grid search to tune the parameters
+
+
+model = GridSearchCV(DTC,
+                     {"max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+                      "min_samples_leaf": [5, 10, 15, 20, 25, 30],
+                      "min_samples_split": [2, 4, 6, 8, 10]},   
+                       cv = 3)                      
+
+# NB this fired an callability error when using DTC() - simply drop the ()
+
+model.fit(X_test, y_test)    # This takes some time
+
+cvresults = DataFrame(model.cv_results_)
+cvresults
+
+cvresults_compact = cvresults[["param_max_depth", 
+                               "param_min_samples_leaf",
+                               "param_min_samples_split",
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+                               
+cvresults_compact
+
+
+# Use iloc to find rank 1 - there might be a simpler way - this changes when the code is reran
+
+cvresults_compact.iloc[150:200, :]   
+
+# There is more than one row with a rank_test_score of 1
+# e.g. use max_depth = 7, min_samples_leaf = 5, min_samples_split = 2
+
+DTC2 = DecisionTreeClassifier(max_depth = 7,
+                              min_samples_leaf = 5,
+                              min_samples_split = 2)       
+
+DTC2.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC2.predict(X_test))     # This is slightly more accurate than the original tree (82.1%) - the confusion matrix will be different - changes when code reran
+
+
+cfm2 = confusion_matrix(y_test, DTC2.predict(X_test))
+
+land_type = ['g', 'l', 'm', 'p', 'u', 'w', 'd']
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(land_type)
+y_label = axes.set_yticklabels(land_type)
+
+heatmap(cfm2, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 4,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()
+
+# The 'l' (leaves) prediction is better, but now others are worse
+
+
+# Random forest
+
+# The default number of estimators/decision trees is 100. Use cross validation to find optimal number of trees
+
+for k in range(1, 30):
+    cross_validation_score = cross_val_score(RandomForestClassifier(n_estimators = 10*k), X_test, y_test, cv = 3)
+    print(cross_validation_score.mean())
+    
+# Optimal number of trees is 260
+
+RFC = RandomForestClassifier(n_estimators = 260)       
+RFC.fit(X_train, y_train)
+
+accuracy_score(y_test, RFC.predict(X_test))           # 80% accurate with Random Forest (changes when code reran)
+
+
+# Naive Bayes
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+
+accuracy_score(y_test, GNB.predict(X_test))    # 70% accurate with GaussianNB
+
+prediction_probabilities = GNB.predict_proba(X_test).round(3)   
+prediction_probabilities                                          
+
+# This array is interesting with 7 probability columns
+# The worst entry is [0.602, 0., 0., 0., 0.398, 0., 0.] - most are more accurate than this
+# Due to a few entries like the above, the model accuracy is reduced to 70%
+# In the context of classifying habitats, this accuracy is acceptable. Better models are available however.
+
+
+# KNN
+
+# Use cross-validation to find the best value of k
+
+for k in range(3, 21):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 8)
+    print(cross_validation_score.mean())
+    
+# Optimality is k = 3
+
+KNN = KNeighborsClassifier(n_neighbors = 3)
+
+KNN.fit(X_train, y_train)
+
+accuracy_score(y_test, KNN.predict(X_test))   # KNN is 75% accurate
+
+
+# SVM
+
+# Use Grid Search CV to determine the best kernel and gamma regularization
+
+model = GridSearchCV(SVC(),
+                     {"kernel": ["linear", "rbf"],
+                      "C": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},   
+                       cv = 3)
+                       
+model.fit(X_test, y_test)
+
+cvresults = DataFrame(model.cv_results_)
+
+cvresults
+
+cvresults_compact = cvresults[["param_C", 
+                               "param_kernel", 
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+                               
+cvresults_compact
+
+
+# Rank 1 is: kernel = rbf and C = 10 (changes when code reran)
+
+svm = SVC(kernel = "rbf", C = 10)
+
+svm.fit(X_train, y_train)
+
+accuracy_score(y_test, svm.predict(X_test))     # Accuracy at 82.1%
+
+
+'''
+Summary - for predicting habitats:
+(1) Models are less accurate than for predicting edibility (e.g. two categories vs seven categories)
+(2) DTC2 = DecisionTreeClassifier(max_depth = 7, min_samples_leaf = 5, min_samples_split = 2) - 82.1% accurate       
+(3) RFC = RandomForestClassifier(n_estimators = 260) - 80% accurate       
+(4) GNB = GaussianNB() - 70% accurate
+(5) KNN = KNeighborsClassifier(n_neighbors = 3) - 75% accurate
+(6) svm = SVC(kernel = "rbf", C = 10) - 82.1%
+(7) Thus choose DTC2 or svm (cm will be different for each)
+
+Next steps:
+Look at predictions distribution for each model. 
+'''
+
+
+# Prediction distributions
+
+X_test                                         # 140 elements
+
+
+predictions = []
+
+predictions.append(DTC2.predict(X_test))
+
+predictions                                    # This came out as an array, I wanted a list. Basically copy, paste and edit to change.
+
+predictions_list = [4, 6, 2, 2, 2, 3, 3, 3, 1, 4, 2, 4, 2, 5, 6, 6, 5, 6, 4, 5, 4, 1,
+                    6, 3, 3, 1, 5, 1, 3, 3, 2, 6, 4, 2, 2, 5, 6, 5, 6, 2, 2, 3, 3, 6,
+                    0, 6, 2, 4, 4, 2, 2, 3, 6, 1, 3, 0, 6, 2, 3, 5, 5, 2, 5, 1, 4, 6,
+                    3, 1, 2, 1, 2, 4, 3, 4, 5, 0, 6, 5, 2, 4, 5, 3, 0, 3, 2, 4, 3, 1,
+                    1, 1, 0, 4, 4, 4, 1, 6, 4, 5, 3, 4, 5, 2, 0, 4, 4, 5, 5, 2, 0, 1,
+                    3, 5, 1, 2, 6, 3, 1, 6, 4, 4, 5, 2, 3, 2, 4, 4, 2, 5, 2, 1, 4, 2,
+                    5, 5, 6, 1, 3, 5, 3, 4]
+                    
+type(predictions_list)                         # Now a list!
+
+len(predictions_list)                          # 140 elements
+
+predictions_df = DataFrame([4, 6, 2, 2, 2, 3, 3, 3, 1, 4, 2, 4, 2, 5, 6, 6, 5, 6, 4, 5, 4, 1,
+                            6, 3, 3, 1, 5, 1, 3, 3, 2, 6, 4, 2, 2, 5, 6, 5, 6, 2, 2, 3, 3, 6,
+                            0, 6, 2, 4, 4, 2, 2, 3, 6, 1, 3, 0, 6, 2, 3, 5, 5, 2, 5, 1, 4, 6,
+                            3, 1, 2, 1, 2, 4, 3, 4, 5, 0, 6, 5, 2, 4, 5, 3, 0, 3, 2, 4, 3, 1,
+                            1, 1, 0, 4, 4, 4, 1, 6, 4, 5, 3, 4, 5, 2, 0, 4, 4, 5, 5, 2, 0, 1,
+                            3, 5, 1, 2, 6, 3, 1, 6, 4, 4, 5, 2, 3, 2, 4, 4, 2, 5, 2, 1, 4, 2,
+                            5, 5, 6, 1, 3, 5, 3, 4])
+                            
+predictions_df                                 # I need it in a dataframe format for value counts
+
+df["Predictions"] = predictions_df             # It still doesn't like the dataframe format for value count, changed again here.
+
+df["Predictions"].value_counts()               # The predictions are not even, best to graph this as hard to visualise.
+
+
+# The x-axis on the graph comes out in the order 2, 4, 3, 5, 6, 1, 0 - unhelpful. Quick manual fix.
+
+# g = 1, l = 2, m = 3, p = 4, u = 5, w = 6, d = 0
+# habitat: grasses = g, leaves = l, meadows = m, paths = p, urban = u, waste = w, woods = d 
+
+x1 = ["woods (d = 0)", 
+      "grasses (g = 1)", 
+      "leaves (l = 2)", 
+      "meadows (m = 3)", 
+      "paths (p = 4)", 
+      "urban (u = 5)", 
+      "waste (w = 6)"]
+
+y1 = [7, 17, 27, 23, 26, 22, 18]             # Range = 19
+
+
+plt.bar(x1, y1, color = "g")         
+plt.xticks(rotation = 90)
+plt.xlabel("Habitats")
+plt.ylabel("Predicted habitat count")
+plt.title("DTC2 ml model prediction distribution")
+plt.show()
+
+
+plt.pie(y1,
+        labels = x1,
+        startangle = 270,
+        shadow = True,
+        explode = (0.5, 0, 0, 0, 0, 0, 0),
+        autopct = "%1.1f%%")
+
+plt.title("DTC2 ml model prediction distribution")
+
+
+# For DTC2, woods is being predicted significantly less times than the rest of the habitats
+# This is an interesting observation because before sampling the dataframe, woods was the most common habitat type (3148)
+# Now to look at how the other models distribute the predictions
+
+
+# RFC distribution
+
+predictions2 = []
+
+predictions2.append(RFC.predict(X_test))
+
+predictions2_list = [4, 6, 2, 4, 2, 3, 3, 3, 1, 4, 4, 4, 4, 5, 6, 6, 5, 6, 2, 5, 1, 4,
+                     6, 3, 3, 4, 5, 1, 3, 3, 2, 6, 4, 2, 2, 5, 6, 5, 6, 2, 2, 3, 3, 6,
+                     0, 6, 0, 4, 4, 2, 2, 3, 6, 1, 3, 0, 6, 2, 3, 0, 5, 2, 5, 1, 4, 6,
+                     3, 1, 4, 4, 2, 4, 3, 4, 5, 0, 6, 0, 4, 4, 3, 3, 0, 3, 2, 4, 3, 1,
+                     1, 1, 0, 4, 4, 4, 4, 6, 4, 1, 3, 2, 5, 2, 0, 4, 4, 5, 5, 2, 2, 1,
+                     3, 5, 1, 2, 6, 3, 1, 6, 4, 4, 5, 0, 3, 4, 4, 4, 0, 5, 4, 1, 2, 2,
+                     5, 5, 6, 1, 3, 5, 3, 4] 
+
+predictions_df2 = DataFrame(predictions2_list)
+
+predictions_df2
+
+df["Predictions2"] = predictions_df2
+
+df["Predictions2"].value_counts()             # Range = 22 (higher than DTC2)
+
+x1 = ["woods (d = 0)", 
+      "grasses (g = 1)", 
+      "leaves (l = 2)", 
+      "meadows (m = 3)", 
+      "paths (p = 4)", 
+      "urban (u = 5)", 
+      "waste (w = 6)"]
+
+y1 = [11, 15, 21, 24, 33, 18, 18]
+
+
+plt.bar(x1, y1, color = "r")         
+plt.xticks(rotation = 90)
+plt.xlabel("Habitats")
+plt.ylabel("Predicted habitat count")
+plt.title("RFC ml model prediction distribution")
+plt.show()
+
+
+plt.pie(y1,
+        labels = x1,
+        startangle = 90,
+        shadow = True,
+        explode = (0, 0, 0, 0, 0.3, 0, 0),
+        autopct = "%1.1f%%")
+
+plt.title("RFC ml model prediction distribution")
+
+
+# The RFC model loves predicting paths (this makes up almost a quarter of the predictions)
+# Path predictions of RFC= 23.6% vs path predictions for DTC2 (18.6%)
+# The range of the RFC model predictions is greater
+
+
+# Next steps:
+# Do prediction distribution for other models
+# Sum up all predictions (y1 values) for all models and graph this
+
+
+# GNB distribution
+
+predictions3 = []
+
+predictions3.append(GNB.predict(X_test))
+
+predictions3_list = [2, 6, 4, 4, 4, 3, 3, 3, 5, 5, 0, 4, 4, 1, 6, 6, 5, 6, 1, 5, 4, 4,
+                     6, 3, 3, 4, 5, 1, 3, 3, 4, 6, 4, 4, 2, 5, 6, 5, 6, 4, 4, 5, 3, 6,
+                     0, 6, 1, 4, 1, 2, 5, 1, 6, 5, 1, 4, 6, 4, 3, 0, 3, 5, 5, 4, 0, 6,
+                     3, 1, 4, 0, 4, 1, 3, 5, 5, 1, 6, 4, 2, 4, 3, 3, 4, 3, 4, 0, 4, 4,
+                     1, 5, 4, 4, 1, 0, 4, 6, 4, 3, 3, 4, 5, 4, 0, 4, 4, 5, 1, 4, 2, 4,
+                     3, 5, 3, 4, 6, 3, 4, 6, 4, 4, 5, 4, 3, 0, 4, 3, 0, 5, 5, 3, 4, 4,
+                     1, 5, 6, 4, 3, 5, 3, 4]
+                     
+predictions_df3 = DataFrame(predictions3_list)
+
+df["Predictions3"] = predictions_df3
+
+df["Predictions3"].value_counts()             # Range = 40 (very high!)
+
+x1 = ["woods (d = 0)", 
+      "grasses (g = 1)", 
+      "leaves (l = 2)", 
+      "meadows (m = 3)", 
+      "paths (p = 4)", 
+      "urban (u = 5)", 
+      "waste (w = 6)"]
+
+y1 = [10, 14, 5, 25, 45, 23, 18]
+
+
+plt.bar(x1, y1, color = "y")         
+plt.xticks(rotation = 90)
+plt.xlabel("Habitats")
+plt.ylabel("Predicted habitat count")
+plt.title("GNB ml model prediction distribution")
+plt.show()
+
+
+plt.pie(y1,
+        labels = x1,
+        startangle = 180,
+        shadow = True,
+        explode = (0, 0, 0.5, 0, 0, 0, 0),
+        autopct = "%1.1f%%")
+
+plt.title("GNB ml model prediction distribution")
+
+# The GNB model also favours paths (even more so than RFC)
+# Leaves are very rarely outputted
+# The range is much higher than the other two models
+
+
+# KNN distribution
+
+predictions4 = []
+
+predictions4.append(KNN.predict(X_test))
+
+predictions4_list = [2, 6, 4, 4, 4, 3, 3, 3, 3, 1, 0, 4, 2, 1, 6, 6, 5, 6, 0, 5, 2, 2,
+                     6, 3, 3, 4, 1, 1, 3, 3, 0, 6, 2, 2, 2, 5, 6, 5, 6, 4, 4, 5, 3, 6,
+                     0, 6, 5, 0, 1, 2, 1, 1, 6, 3, 1, 0, 6, 0, 3, 0, 3, 1, 5, 0, 0, 6,
+                     3, 1, 0, 0, 0, 1, 3, 5, 5, 0, 6, 4, 2, 0, 3, 3, 4, 3, 0, 0, 4, 2,
+                     1, 5, 0, 0, 1, 0, 1, 6, 4, 3, 3, 2, 5, 2, 0, 4, 4, 1, 1, 2, 2, 4,
+                     3, 5, 3, 2, 6, 3, 4, 6, 2, 4, 1, 2, 3, 0, 4, 3, 0, 5, 0, 3, 2, 0,
+                     1, 5, 6, 4, 1, 5, 3, 4]
+                     
+predictions_df4 = DataFrame(predictions4_list)
+
+df["Predictions4"] = predictions_df4
+
+df["Predictions4"].value_counts()                   # Range = 11
+
+
+x1 = ["woods (d = 0)", 
+      "grasses (g = 1)", 
+      "leaves (l = 2)", 
+      "meadows (m = 3)", 
+      "paths (p = 4)", 
+      "urban (u = 5)", 
+      "waste (w = 6)"]
+
+y1 = [25, 19, 18, 26, 19, 15, 18]
+
+
+plt.bar(x1, y1, color = "g")         
+plt.xticks(rotation = 90)
+plt.xlabel("Habitats")
+plt.ylabel("Predicted habitat count")
+plt.title("KNN ml model prediction distribution")
+plt.show()
+
+
+plt.pie(y1,
+        labels = x1,
+        startangle = 90,
+        shadow = True,
+        explode = (0, 0, 0, 0, 0, 0.3, 0),
+        autopct = "%1.1f%%")
+
+plt.title("KNN ml model prediction distribution")
+
+# KNN model has low range - predictions are a lot more even
+
+
+# SVM distribution
+
+predictions5 = []
+
+predictions5.append(svm.predict(X_test))
+
+predictions5_list = [2, 6, 4, 4, 2, 3, 3, 3, 1, 1, 0, 4, 2, 1, 6, 6, 5, 6, 0, 5, 4, 2,
+                     6, 3, 3, 4, 5, 1, 3, 3, 2, 6, 4, 2, 2, 5, 6, 5, 6, 4, 2, 5, 3, 6,
+                     0, 6, 5, 4, 1, 2, 1, 1, 6, 5, 1, 4, 6, 2, 3, 0, 3, 1, 5, 0, 0, 6,
+                     3, 1, 4, 0, 0, 1, 3, 5, 5, 0, 6, 2, 2, 4, 3, 3, 4, 3, 2, 0, 4, 4,
+                     1, 5, 1, 4, 1, 0, 1, 6, 4, 3, 3, 4, 5, 2, 0, 4, 4, 5, 1, 2, 2, 4,
+                     3, 5, 3, 2, 6, 3, 4, 6, 2, 2, 5, 2, 3, 0, 4, 3, 0, 5, 0, 3, 2, 0,
+                     1, 5, 6, 4, 3, 5, 3, 4] 
+                     
+predictions_df5 = DataFrame(predictions5_list)
+
+df["Predictions5"] = predictions_df5
+
+df["Predictions5"].value_counts()                   # Range = 9 (low)
+
+
+x1 = ["woods (d = 0)", 
+      "grasses (g = 1)", 
+      "leaves (l = 2)", 
+      "meadows (m = 3)", 
+      "paths (p = 4)", 
+      "urban (u = 5)", 
+      "waste (w = 6)"]
+
+y1 = [16, 17, 21, 25, 24, 19, 18]
+
+
+plt.bar(x1, y1, color = "b")         
+plt.xticks(rotation = 90)
+plt.xlabel("Habitats")
+plt.ylabel("Predicted habitat count")
+plt.title("svm ml model prediction distribution")
+plt.show()
+
+
+plt.pie(y1,
+        labels = x1,
+        startangle = 250,
+        shadow = True,
+        explode = (0.2, 0, 0, 0, 0, 0, 0),
+        autopct = "%1.1f%%")
+
+plt.title("svm ml model prediction distribution")
+
+# svm predictions are very even (again woods is the lowest even though woods dominated the df before sampling)
+
+
+# Summary of predictions distribution
+
+DTC2_count = [7, 17, 27, 23, 26, 22, 18]
+RFC_count = [11, 15, 21, 24, 33, 18, 18]
+GNB_count = [10, 14, 5, 25, 45, 23, 18]
+KNN_count = [25, 19, 18, 26, 19, 15, 18]
+svm_count = [16, 17, 21, 25, 24, 19, 18]
+
+total_count =  zip(DTC2_count, RFC_count, GNB_count, KNN_count, svm_count)         # Zip all lists and then sum them
+
+total_count_list = [sum(i) for i in total_count]
+
+total_count_list                                                                   # [69, 82, 92, 123, 147, 97, 90] - now plot this
+
+x1 = ["woods (d = 0)", 
+      "grasses (g = 1)", 
+      "leaves (l = 2)", 
+      "meadows (m = 3)", 
+      "paths (p = 4)", 
+      "urban (u = 5)", 
+      "waste (w = 6)"]
+
+y1 = total_count_list
+
+
+plt.bar(x1, y1, color = "g")         
+plt.xticks(rotation = 90)
+plt.xlabel("Habitats")
+plt.ylabel("Predicted habitat count")
+plt.title("All 5 models prediction distribution")
+plt.show()
+
+
+plt.pie(y1,
+        labels = x1,
+        startangle = 190,
+        shadow = True,
+        explode = (0.2, 0, 0, 0, 0, 0, 0),
+        autopct = "%1.1f%%")
+
+plt.title("All 5 models prediction distribution")
+
+# Looking at all 5 models, predictions are fairly even overall
+# Notably woods is predicted the least even though in the unsampled dataframe the habitats are overwhelmingly woods
+# Overall models favour paths - although this is mainly the GNB model
+
+
+# SQL - df into SQL for my own practice (all subsequent code is SQL)
+
+CREATE DATABASE mushroom;
+USE mushroom;
+
+# Use import wizard to put csv file into SQL
+# This time I didn't create the table beforehand as there are 23 columns - this would take ages to code
+# NB the data took about 20 minutes to import!
+# NB change the Limit - SQL is defaulted to 1000 rows returned for a query, this dataset is 8000+ rows
+
+SHOW TABLES;                             # The created table is called mushrooms
+
+DESCRIBE mushrooms;                      # To see what is in the table (e.g. the df)
+
+
+# Example Queries: 
+
+# How many mushrooms from the woods are edible? How many are poisonous?
+
+SELECT class, habitat 
+FROM mushrooms
+WHERE class = "e" AND habitat = "d";     # 1880 edible in woods
+
+SELECT class, habitat 
+FROM mushrooms
+WHERE class = "p" AND habitat = "d";     # 1268 poisonous in woods
+
+
+# How many conical caps? Other?
+
+SELECT `cap-shape` 
+FROM mushrooms;                          # 8124 in total
+
+SELECT `cap-shape` 
+FROM mushrooms                           # NB SQL doesn't like column headings that are hyphenated - use backticks around heading, quotations doesn't work!
+WHERE `cap-shape` = "x";                 # 3656 conical mushrooms
+
+SELECT `cap-shape` FROM mushrooms       
+WHERE `cap-shape` != "x";                # 4468 non-conical mushrooms
+
+
+# How many edible, unbruised mushrooms are there which do not have a foul odor and do not grow in waste habitats?
+
+SELECT class, bruises, odor, habitat
+FROM mushrooms
+WHERE class = "e"
+AND bruises = "f"
+AND odor != "f" 
+AND habitat != "w";                       # I thought this query was quite specific, but it still returned 1456 mushrooms     
+
+
+# Select 5 random entries that satisfy the above criteria (edible, unbruised, no foul odor and not in a waste habitat)
+
+SELECT*FROM mushrooms
+WHERE class = "e"
+AND bruises = "f"
+AND odor != "f" 
+AND habitat != "w"
+ORDER BY RAND()
+LIMIT 5;
+
+
+# How many different gill-colours are there?
+
+SELECT COUNT(DISTINCT `gill-color`)
+FROM mushrooms;                             # 12 colours
+
+
+# Follow up question. How many mushrooms are there of each gill-colour?
+
+SELECT `gill-color`, COUNT(*)
+FROM mushrooms
+GROUP BY `gill-color`;               
+
+# Powerful! This returns the count for each unique class in a column
+
+
+# Naturally one can make this query a lot more specific:
+# Count of distinct gill-colours where the mushrooms are edible, without bruises, not foul smelling and not growing in a waste habitat?
+
+SELECT `gill-color`, class, bruises, odor, habitat, COUNT(*)
+FROM mushrooms
+WHERE class = "e"
+AND bruises = "f"
+AND odor != "f" 
+AND habitat != "w"
+GROUP BY `gill-color`; 
+
+
+END OF CODE - this was a great dataset. Thanks to the author as cited above.
