@@ -1,0 +1,467 @@
+# Machine Learning: Seaborn penguins revisited
+
+# Code contains ml with categorical variables and regression + SQL analysis
+
+
+# Setup 
+
+import seaborn as sns
+
+import pandas
+from pandas import concat
+from pandas import DataFrame
+
+import numpy
+from numpy import polyfit
+
+import sklearn
+
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LinearRegression
+
+from matplotlib import pyplot as plt
+
+df = sns.load_dataset("penguins")
+
+
+# Clean data
+
+df.isnull().sum()                   # Null values exist
+
+df.dropna(inplace = True)
+
+df.isnull().sum()                   # Clean of null values
+
+
+# Reminder of the distribution of penguin species
+
+Adelie = []
+Chinstrap = []
+Gentoo = []
+
+for i in df.species:
+    if i == "Adelie":
+        Adelie.append(i)
+    elif i == "Chinstrap":
+        Chinstrap.append(i)
+    else:
+        Gentoo.append(i)
+        
+print(len(Adelie))         # 146 Adelies
+print(len(Chinstrap))      # 68 Chinstraps
+print(len(Gentoo))         # 119 Gentoos
+
+# The category to be predicted is not even - sample 50 of each penguin
+
+ADE = df[df["species"] == "Adelie"]
+CHI = df[df["species"] == "Chinstrap"]
+GEN = df[df["species"] == "Gentoo"]
+
+ADE_sample = ADE.sample(n = 50)
+CHI_sample = CHI.sample(n = 50)
+GEN_sample = GEN.sample(n = 50)
+
+df2 = concat([ADE_sample,
+              CHI_sample,
+              GEN_sample])
+
+df2 = df2.reset_index(drop = True)
+
+df2                                                   # A dataframe with 50 of each penguin to make the predictions fairer
+
+
+# Store the drop continous variables - make categorical ml model first 
+
+continuous_variables = df2[["culmen_length_mm", 
+                            "culmen_depth_mm", 
+                            "flipper_length_mm",
+                            "body_mass_g"]]
+                            
+df2.drop({"culmen_length_mm", "culmen_depth_mm", "flipper_length_mm", "body_mass_g"}, axis = 1, inplace = True)
+
+df2                                                        # Just categorical variables
+
+df2.island.nunique()                                       # 3 islands
+
+df2.sex.nunique()                                          # 2 sexes
+
+df3 = df2.apply(LabelEncoder().fit_transform)
+
+df3      
+
+# species: 0 = Adelie, 1 = Chinstrap, 2 = Gentoo
+# island: 0 = Biscoe, 1 = Dream, 2 = Torgersen
+# sex: 0 = Female, 1 = Male
+
+
+X = df3.drop("species", axis = 1)      
+y = df3["species"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+print(len(X_test))
+print(len(y_test))                                          # 30 elements
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))                 # 70% accurate (changes) - improve by refining tree + other models
+
+cm = confusion_matrix(y_test, DTC.predict(X_test))
+
+cm                                                          # Errors - Chinstrap and Gentoo are getting predicted when the answer is actually Adelie
+
+df2.iloc[0:50, :]                                           # Adelie can live on all three islands
+df2.iloc[50:100, :]                                         # Chinstrap are only on Dream
+df2.iloc[100:150, :]                                        # Gentoo are only on Biscoe
+
+# So the misclassifications are due to the Adelie being on all three islands
+# I will try to improve the model (without removing the Adelie)
+
+
+DTC                                                          # Currently no max_depth specified, min_samples_leaf = 1, min_samples_split = 2. Probably overfitting.
+
+# Quick look at the tree
+
+plt.figure(figsize = (30, 30))
+
+sklearn.tree.plot_tree(DTC, 
+                       max_depth = None,                                           
+                       feature_names = X.columns, 
+                       class_names = True,                    
+                       label = 'all', 
+                       filled = True, 
+                       impurity = True, 
+                       node_ids = True,                       
+                       proportion = False, 
+                       rounded = True, 
+                       precision = 5, 
+                       ax = None,
+                       fontsize = 20)
+
+plt.show()
+
+# Island is the first variable taken into account, then sex
+# If the island is > 1.5 (e.g. island 2 [Torgersen]) then output is Adelie (Gentoo and Chinstrap don't live there)
+
+
+# Use GridSearch based on the information from the tree
+
+model = GridSearchCV(DTC,
+                     {"max_depth": [1, 2, 3, 4, 5],
+                      "min_samples_leaf": [10, 20, 30, 40, 50],
+                      "min_samples_split": [10, 20, 30, 40, 50]},   
+                       cv = 6)
+                       
+model.fit(X_test, y_test)
+
+cvresults = DataFrame(model.cv_results_)
+cvresults
+
+cvresults_compact = cvresults[["param_max_depth", 
+                               "param_min_samples_leaf",
+                               "param_min_samples_split",
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+                               
+cvresults_compact
+
+cvresults_compact[cvresults_compact["rank_test_score"] == 1]                                  # Get df for rank_test_score == 1 (10 options)
+
+# Pick one: max_depth = 4 (same as before), min_samples_leaf = min_samples_split = 10
+
+DTC2 = DecisionTreeClassifier(max_depth = 4,
+                              min_samples_leaf = 10,
+                              min_samples_split = 10)
+                              
+DTC2.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC2.predict(X_test))                   # Returned 70% again 
+
+DTC3 = DecisionTreeClassifier(max_depth = 4,                   # Other rank 1 choice with max_depth = 4
+                              min_samples_leaf = 10,
+                              min_samples_split = 20)
+
+DTC3.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC3.predict(X_test))                   # Returned 70% again
+
+
+# Quick look at the cms for the three DTCs (all of accuracy 70%)
+
+cm = confusion_matrix(y_test, DTC.predict(X_test))
+cm2 = confusion_matrix(y_test, DTC2.predict(X_test))
+cm3 = confusion_matrix(y_test, DTC3.predict(X_test))
+
+print(cm)
+print(cm2)
+print(cm3)
+
+# No change - same cm for each and same accuracy. Unable to improve DecisionTree without adjusting the data
+
+# Note
+
+print(y_test)                 # 0 (Adelie) occurs more than once (these are the 'true values')
+print(DTC.predict(X_test))    # 0 (Adelie) is only predicted once (changes when code reran)
+
+
+# Random forest
+
+# The default number of estimators/decision trees is 100. Use cross validation to find optimal number of trees
+
+for k in range(1, 21):
+    cross_validation_score = cross_val_score(RandomForestClassifier(n_estimators = 10*k), X_test, y_test, cv = 5)
+    print(cross_validation_score.mean())
+    
+# Optimal number of trees is any of 40, 80, 150, 180 and 200
+
+RFC = RandomForestClassifier(n_estimators = 150)       
+RFC.fit(X_train, y_train)
+
+accuracy_score(y_test, RFC.predict(X_test))               # 80% (code changes when reran)
+
+cm = confusion_matrix(y_test, RFC.predict(X_test))
+cm                                                        # Same issue - model predicting Chinstrap/Gentoo when Adelie
+
+
+# KNN
+
+# Use cross-validation to find the best value of k
+
+for k in range(2, 20):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 3)
+    print(cross_validation_score.mean())
+    
+# Optimal k at 14, 15 or 16
+
+
+KNN = KNeighborsClassifier(n_neighbors = 14)
+KNN.fit(X_train, y_train)
+accuracy_score(y_test, KNN.predict(X_test))               # 46.66666...% Very low! (changes when code reran)
+
+KNN = KNeighborsClassifier(n_neighbors = 15)
+KNN.fit(X_train, y_train)
+accuracy_score(y_test, KNN.predict(X_test))               # 73.33333...%
+
+KNN = KNeighborsClassifier(n_neighbors = 16)
+KNN.fit(X_train, y_train)
+accuracy_score(y_test, KNN.predict(X_test))               # 80% - optimal. (Same as RFC)
+
+
+# SVM
+
+parameters = {"kernel": ["linear", "rbf"],                # Alternative syntax
+              "C": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+
+model = GridSearchCV(SVC(), parameters, cv = 4)
+
+model.fit(X_test, y_test)
+
+cvresults = DataFrame(model.cv_results_)
+
+cvresults                                                 # Optimal at C = 1, kernel = linear (e.g. a model which allows errors - not overfitting)
+
+svm = SVC(kernel = "linear", C = 1)
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))               # Only 53.33333...% (changes when code reran)
+
+
+# Naive Bayes
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+
+accuracy_score(y_test, GNB.predict(X_test))               # 80% accurate. Good.
+
+ypred = GNB.fit(X_train, y_train).predict(X_test)
+
+ypred                                                     # Model predictions [1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 0, 2, 1, 0, 1, 2, 1, 1, 2, 0, 2, 1, 2, 2, 2, 2, 2, 1, 0]    
+
+ypred = [1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 2, 0, 2, 1, 0, 1, 2, 1, 1, 2, 0, 2, 1, 2, 2, 2, 2, 2, 1, 0]              # Now a list object
+
+print(ypred.count(0))                                     # 4 predicted Adelies   
+print(ypred.count(1))                                     # 13 predicted Chinstraps
+print(ypred.count(2))                                     # 13 predicted Gentoos
+
+
+# What are the probabilities of each prediction?
+
+prediction_probabilities = GNB.predict_proba(X_test).round(3)       # Round to avoid unhelpful outputs
+prediction_probabilities                                            # All predictions are made with certainty
+
+cm = confusion_matrix(y_test, GNB.predict(X_test))
+cm                                                                  # Exact same cm as RFC - max accuracy seems to be 80%
+
+
+# Next steps - regression to see if better accuracy using cts variables, SQL.
+
+continuous_variables                                                # Predict body mass from culmen length/depth and flipper length
+
+X = continuous_variables.drop("body_mass_g", axis = 1)   
+y = continuous_variables.body_mass_g
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+LR = LinearRegression()
+
+LR.fit(X_train, y_train)
+
+print(LR.intercept_)                          # -5061.978972710264
+
+print(LR.coef_)                               # [3.66482183, -18.36954513,  46.6706582]
+
+# body_mass_g = 3.66482183*culmen_length_mm - 18.36954513*culmen_depth_mm + 46.6706582*flipper_length_mm - 5061.978972710264 
+
+LR.score(X_test, y_test)                      # 0.7415255847490894 - this score was for the sampled df. Try with original df.
+
+df
+
+df.isnull().sum()
+
+df4 = df.drop({"species", "island", "sex"}, axis = 1)              # Drop categorical variables
+
+X = df4.drop("body_mass_g", axis = 1)   
+y = df4.body_mass_g
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+LR = LinearRegression()
+
+LR.fit(X_train, y_train)
+
+print(LR.intercept_)                          # -6227.688410615798
+
+print(LR.coef_)                               # [3.85768347, 10.05813347, 50.24725463]
+
+# body_mass_g = 3.85768347*culmen_length_mm + 10.05813347*culmen_depth_mm + 50.24725463*flipper_length_mm - 6227.688410615798
+
+LR.score(X_test, y_test)                      # 0.7980758349105358 - so the score is better for the whole df
+
+
+# Next try using just flipper length to predict body mass
+
+df5 = df4.drop({"culmen_length_mm", "culmen_depth_mm"}, axis = 1)
+
+plt.scatter(df5.flipper_length_mm, 
+            df5.body_mass_g,
+            marker = 'x', 
+            color = 'g')
+
+plt.xlabel("flipper_length_mm")
+plt.ylabel("body_mass_g")
+plt.title("Penguin flipper and body mass relationship")
+
+m, c = polyfit(df5.flipper_length_mm, df5.body_mass_g, 1)                  # Line of best fit
+plt.plot(df5.flipper_length_mm, m*df5.flipper_length_mm + c)
+
+plt.show()
+
+X = df5.drop("body_mass_g", axis = 1)          
+y = df5.body_mass_g                            
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
+
+LR = LinearRegression()
+LR.fit(X_train, y_train)
+
+LR.score(X_test, y_test)                      # 0.7938115564401114 (fractional accuracy loss - roughly the same)
+
+print(LR.intercept_)                          # -5919.258741821233
+
+print(LR.coef_)                               # 50.41798199
+
+# body_mass_g = 50.41798199*flipper_length_mm - 5919.258741821233
+
+
+# Test model outputs vs true values 
+
+print(LR.predict([[181.0]]))                  # model_output = 3206 (rounded), true_output = 3750 (difference = 544)
+print(LR.predict([[186.0]]))                  # model_output = 3458 (rounded), true_value = 3800 (difference = 342)
+print(LR.predict([[195.0]]))                  # model_output = 3912 (rounded), true_value = 3250 (difference = 662)
+print(LR.predict([[213.0]]))                  # model_output = 4820 (rounded), true_value = 5400 (difference = 580)
+
+
+# SQL (with numeric and categorical queries)
+
+df
+
+SQL_df = df.reset_index(drop = True)          # Reset as there are gaps where the null values were
+
+SQL_df
+
+SQL_df.to_excel("peng.xlsx", sheet_name = 'data', index = False)
+
+
+# ****ALL SUBSEQUENT CODE IS SQL****
+
+CREATE DATABASE penguin;
+USE penguin;
+
+CREATE TABLE penguindata(
+species ENUM('Adelie', 'Chinstrap', 'Gentoo') NOT NULL,
+island ENUM('Torgersen', 'Dream', 'Biscoe') NOT NULL,
+culmen_length_mm VARCHAR(20) NOT NULL,
+culmen_depth_mm VARCHAR(20) NOT NULL,
+flipper_length_mm VARCHAR(20) NOT NULL,
+body_mass_g VARCHAR(20) NOT NULL,
+sex ENUM('MALE', 'FEMALE') NOT NULL);
+
+SELECT*FROM penguindata;
+
+# Use SQL import wizard to get csv data (NB refresh schemas)
+
+
+# Categorical queries and continuous queries are available
+
+
+# What is the average body mass of a penguin?
+SELECT 
+AVG(body_mass_g) AS body_mass_average
+FROM penguindata;
+# 4207.1g (1dp) 
+
+# Select female pengiuns which have a flipper length of less than 200mm?
+SELECT*FROM penguindata
+WHERE sex != "MALE"
+AND flipper_length_mm < 200;
+# 104 penguins - a quick scan through shoes that these are either Adelies or Chinstraps
+
+# Next query, specific dimensions for culmen, flipper and body mass (example):
+SELECT*FROM penguindata
+WHERE culmen_length_mm > 50
+AND culmen_depth_mm <= 20
+AND flipper_length_mm < 190
+AND body_mass_g < 3500;
+# Returns one male Chinstrap
+
+# Penguin body masses between 4500g and 5000g inclusive:
+SELECT*FROM penguindata
+WHERE body_mass_g <= 5000
+AND body_mass_g >= 4500;           # Note you can't use 4500 <= body_mass_g <= 5000 - this returns the whole df. 
+# 54 penguins
+
+# The ranges of all the continuous data:
+SELECT
+MAX(culmen_length_mm) - MIN(culmen_length_mm) AS range_culmen_length_mm,              # The text after 'AS' can be anything, preferably meaningful
+MAX(culmen_depth_mm) - MIN(culmen_depth_mm) AS range_culmen_depth_mm,
+MAX(flipper_length_mm) - MIN(flipper_length_mm) AS range_flipper_length_mm,
+MAX(body_mass_g) - MIN(body_mass_g) AS range_body_mass_g
+FROM penguindata;
+# Ranges respectively 27.5mm, 8.4mm, 59mm, 3600g 
+
+# How many penguins of each species?
+SELECT COUNT(species)
+FROM penguindata
+GROUP BY species;                         # NB use GROUP BY otherwise you just get the total count
