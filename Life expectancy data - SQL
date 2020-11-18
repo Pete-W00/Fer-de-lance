@@ -1,0 +1,257 @@
+# Country life expectancy (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - Aman Saxena
+# Original source - https://www.kaggle.com/amansaxena/lifeexpectancy
+
+# This code is all SQL
+# Code contains: creating table, importing data and queries
+# NB I made some mistakes with creating the table and then fixed them (I left all this in the code as the mistakes were valuable to learn from)
+
+
+
+CREATE DATABASE life_expectancy;
+USE life_expectancy;
+
+CREATE TABLE life_exp(
+Country_rank MEDIUMINT NOT NULL,
+Country VARCHAR(30) NOT NULL,                           # The forementioned mistake is here!
+Overall_life FLOAT NOT NULL,
+Male_life FLOAT NOT NULL,
+Female_life FLOAT NOT NULL,
+Continent VARCHAR(20) NOT NULL);
+
+SELECT*FROM life_exp;
+
+# Refresh schemas and use import wizard to put csv into SQL (import takes about 20 seconds)
+
+SELECT COUNT(*) FROM life_exp;
+
+SELECT Country_rank FROM life_exp WHERE COUNTRY_rank >= 1;
+
+# Row count not working properly in SQL - returns row count of 220 when I can see there are 223 in the csv. Not sure why this is happening. Returns 223 in Python.
+
+SELECT Continent, COUNT(*)
+FROM life_exp
+GROUP BY Continent
+ORDER BY Continent ASC;  
+
+# Two countries belonging to the African continent are missing (count = 53, should be 55) 
+# One North American country is missing (count = 33, should be 34) 
+# Compare to csv and manually figure out which ones
+
+SELECT Country, Continent
+FROM life_exp
+WHERE Continent = "Africa"
+ORDER BY Country ASC;
+
+SELECT Country, Continent
+FROM life_exp
+WHERE Continent = "North America"
+ORDER BY Country ASC;
+
+# After some analysis, the SQL dataset is missing:
+# (1) Saint Helena, Ascension and Tristan da Cunha 
+# (2) Saint Vincent and the Grenadines was missed 
+# (3) Democratic Republic of the Congo was missed 
+
+INSERT INTO life_exp VALUES
+(45, "Saint Helena, Ascension and Tristan da Cunha", 79.5, 76.6, 82.6, "Africa"),  
+(105, "Saint Vincent and the Grenadines", 75.3,	73.3, 77.4,	"North America"),
+(206, "Democratic Republic of the Congo", 57.3, 55.8, 58.9, "Africa");                   # Didn't work!
+
+# The error is due to insufficient characters (30) in the Country column when I set up the table!
+# Basically SQL just ignored values that didn't fit the table parameters!
+# Drop table, create new one with more characters and reimport 
+
+CREATE TABLE life_exp(
+Country_rank MEDIUMINT NOT NULL,
+Country VARCHAR(60) NOT NULL,
+Overall_life FLOAT NOT NULL,
+Male_life FLOAT NOT NULL,
+Female_life FLOAT NOT NULL,
+Continent VARCHAR(20) NOT NULL);
+
+# Refresh schemas and import from cleaned csv (with all the special characters removed in the country column)
+
+SELECT*FROM life_exp;           # All entries are now in the table (223 rows)!
+
+
+# Now a few queries to get some understanding of the dataset:
+
+# Continent distribution
+SELECT Continent, COUNT(*)
+FROM life_exp
+GROUP BY Continent
+ORDER BY Continent DESC;                   
+# 69.5% is Africa, Europe and Asia
+
+# Overall life expectancy of 80+
+SELECT*FROM life_exp
+WHERE Overall_life >= 80.0; 
+# 41 countries (NB the term 'country' isn't really the correct term here as non-countries and the EU are included)
+
+# Rename Country column to Area (more appropriate).
+# I might rename the table as well, just to avoid confusion with the first table (it didn't have enough characters for the country column).
+
+ALTER TABLE life_exp RENAME COLUMN Country TO Area;       # This is the only syntax I could get to work, I think there are other options. 
+  
+RENAME TABLE life_exp TO life_exp2;
+
+SELECT*FROM life_exp2;
+
+# Overall life expectancy of less than 60
+SELECT*FROM life_exp2
+WHERE Overall_life < 60.0;
+# 24 areas (all belonging to Africa except Afghanistan)
+
+# Range of overall, male and female life expectancies
+SELECT
+MAX(Overall_life) - MIN(Overall_life) AS "Range of overall life",
+MAX(Male_life) - MIN(Male_life) AS "Range of male life",
+MAX(Female_life) - MIN(Female_life) AS "Range of female life"
+FROM life_exp2;
+# This query returns strange and imprecise values.
+# The table needs changing again, replace FLOAT with DECIMAL(x,y)
+
+# For this dataset it's easier to just redesign the table (can use CHANGE command instead)
+
+DROP TABLE life_exp2;
+
+CREATE TABLE life_exp3(
+Country_rank MEDIUMINT NOT NULL,
+Area VARCHAR(60) NOT NULL,
+Overall_life DECIMAL(10,1) NOT NULL,               # Decimal type, 10 digits, 1 after decimal point and up to 9 before
+Male_life DECIMAL(10,1) NOT NULL,
+Female_life DECIMAL(10,1) NOT NULL,
+Continent VARCHAR(20) NOT NULL);
+
+SELECT*FROM life_exp3;
+
+# Import with wizard (cleaned csv)
+
+SELECT*FROM life_exp3;
+
+
+# Range of overall, male and female life expectancies
+SELECT
+MAX(Overall_life) - MIN(Overall_life) AS "Range of overall life",     # 39.3yrs
+MAX(Male_life) - MIN(Male_life) AS "Range of male life",              # 37.0yrs
+MAX(Female_life) - MIN(Female_life) AS "Range of female life"         # 42.5yrs
+FROM life_exp3;
+# ***These values are now correct and in a readable format.
+
+
+# Areas where overall life at least 70yrs (per continent):
+
+SELECT*FROM life_exp3
+WHERE Overall_life >= 70.0 
+AND Continent = "Europe";               # All of Europe. NB can probably build ml model just with this data.
+
+SELECT*FROM life_exp3
+WHERE Overall_life >= 70.0 
+AND Continent = "Asia";                 # 38 out of 49 
+  
+SELECT*FROM life_exp3
+WHERE Overall_life >= 70.0 
+AND Continent = "Africa";               # 9 out of 55
+
+SELECT*FROM life_exp3
+WHERE Overall_life >= 70.0 
+AND Continent = "North America";        # 32 out of 34
+   
+SELECT*FROM life_exp3
+WHERE Overall_life >= 70.0 
+AND Continent = "Oceania";              # 16 out of 20
+
+SELECT*FROM life_exp3
+WHERE Overall_life >= 70.0 
+AND Continent = "South America";        # 12 out of 14
+
+
+# Compare European Union to remainder of world
+
+SELECT*FROM life_exp3
+WHERE Area = "European Union";          # Overall_life = 80.2yrs, Male_life = 77.4, Female_life = 83.2
+
+SELECT*FROM life_exp3                   
+WHERE Continent != "Europe"
+AND Overall_life > 80.2;                # 13 countries outside of Europe have an overall life expectancy greater than that of the EU
+
+SELECT*FROM life_exp3                   
+WHERE Continent != "Europe"
+AND Male_life > 77.4;                   # 14 countries outside of Europe have a male life expectancy greater than that of the EU
+
+SELECT*FROM life_exp3                   
+WHERE Continent != "Europe"
+AND Female_life > 83.2;                 # 13 countries outside of Europe have a female life expectancy greater than that of the EU
+
+
+# Categorise areas by continent where overall life expectancy is below the world average:
+
+SELECT AVG(Overall_life) AS "World overall life average"
+FROM life_exp3;                                                      # World overall life average = 72.5yrs (1dp)
+
+SELECT Continent, COUNT(Continent) AS "Number of areas in continent below overall life average"
+FROM life_exp3
+WHERE Overall_life < 72.5
+GROUP BY Continent;  
+# NA = 6, SA = 3, AFR = 47, EUR = 2, ASIA = 19, OCE = 4
+
+# Having gone to the effort to code the above query, it is very simple to answer the opposite question:
+SELECT Continent, COUNT(Continent) AS "Number of areas in continent equal to or above overall life average"
+FROM life_exp3
+WHERE Overall_life >= 72.5
+GROUP BY Continent;  
+# NA = 28, SA = 11, AFR = 8, EUR = 49, ASIA = 30, OCE = 16
+
+SELECT Continent, COUNT(Continent) 
+FROM life_exp3
+GROUP BY Continent;                   # Sum values of the previous two queries to check that no area was missed
+
+
+# Now a few specific queries just to finish (mainly for SQL practice rather than actual usefulness)
+# Sum of male life in Africa vs male life in Europe
+
+SELECT SUM(Male_life)
+FROM life_exp3
+WHERE Continent = "Africa";           # 3306yrs
+
+SELECT SUM(Male_life)
+FROM life_exp3
+WHERE Continent = "Europe";           # 3876.2yrs
+
+# This really illustrates the difference (570.2yrs) for roughly the same number of countries!
+
+
+# Female life expectancies in South America that are between 70 and 80yrs inclusive?
+SELECT*FROM life_exp3
+WHERE Continent = "South America"
+AND Female_life BETWEEN 70 AND 80;    
+# Returns 11 from 14
+
+SELECT*FROM life_exp3
+WHERE Continent = "South America";           # Quick check - Chile, Uruguay and Argentina fl > 80
+
+
+# Last query using all the parameters (just to try it):
+SELECT*FROM life_exp3
+WHERE 
+Country_rank BETWEEN 100 and 200
+AND
+Area LIKE "E%"                               # E.g. character contains 'e' 
+AND
+Overall_life < 76
+AND
+Male_life < 73
+AND
+Female_life > 65
+AND
+Continent != "Europe";
+# Returns El Salvador, Egypt, Eritrea and Equatorial Guinea
+
+# END OF SQL ANALYSIS 
+
+# There are two more parts to this project: 
+# Life expectancy data - Data Visualisation 
+# Life expectancy data - Machine Learning 
