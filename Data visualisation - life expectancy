@@ -1,0 +1,687 @@
+# Country life expectancy (dataset from Kaggle) - Aim: Data Visualisation
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - Aman Saxena
+# Original source - https://www.kaggle.com/amansaxena/lifeexpectancy
+
+
+''' 
+***NB This data needed to be cleaned first***
+In the Country column you must remove all special characters
+I removed , ; - ' 
+São Tomé and Príncipe and Côte d'Ivoire were changed to remove accented characters
+If you do not make these changes you get a unicodedecodeerror 'utf-8
+'''
+
+# NB - the figures associated to this code are here: https://github.com/Pete-W00/Fer-de-lance/tree/master/PNGs
+
+
+# SETUP
+
+import numpy
+from numpy import array
+from numpy import polyfit
+from numpy import sin
+from numpy import cbrt
+from numpy import exp
+from numpy import log10
+from numpy import log
+
+import seaborn as sns
+from seaborn import boxplot
+from seaborn import swarmplot
+from seaborn import relplot
+from seaborn import catplot
+
+from matplotlib import pyplot as plt
+
+import pandas
+from pandas import read_csv
+
+df = read_csv("LE.csv")                                                     # This is the cleaned csv file (see notes above)
+
+
+# SPLITTING DFs
+
+df.Continent.unique()                                                       # This yields 6 (Antarctica is excluded)
+
+Europe = df[df["Continent"] == "Europe"]
+Asia = df[df["Continent"] == "Asia"]
+Africa = df[df["Continent"] == "Africa"]
+Oceania = df[df["Continent"] == "Oceania"]
+NA = df[df["Continent"] == "North America"]
+SA = df[df["Continent"] == "South America"]
+
+
+# BAR CHARTS
+
+
+# Graph continent vs overall life means of continent
+
+Europe["Overall Life"].mean()                                               # 79.01960784313724 (rounded 79)
+print(Asia["Overall Life"].mean())                                          # rounded 73
+print(Africa["Overall Life"].mean())                                        # rounded 62
+print(Oceania["Overall Life"].mean())                                       # rounded 74
+print(NA["Overall Life"].mean())                                            # rounded 76
+print(SA["Overall Life"].mean())                                            # rounded 75
+
+x = ["Europe", "Asia", "Africa", "Oceania", "NA", "SA"]
+y = [79, 73, 62, 74, 76, 75]
+
+plt.bar(x, y, color = "g")
+plt.xticks(rotation = 90)
+plt.xlabel("Continent")
+plt.ylabel("Mean overall life expectancy")
+plt.title("Mean overall life expectancy of all continents")      
+plt.show()                                                                  # Africa stands out here
+
+
+# Graph continent against mean male and mean female life expectancies together
+
+print(Europe["Male Life"].mean())                                           # 76 (all rounded)
+print(Asia["Male Life"].mean())                                             # 71
+print(Africa["Male Life"].mean())                                           # 60
+print(Oceania["Male Life"].mean())                                          # 72
+print(NA["Male Life"].mean())                                               # 74
+print(SA["Male Life"].mean())                                               # 72
+
+print(Europe["Female Life"].mean())                                         # 82 (all rounded)
+print(Asia["Female Life"].mean())                                           # 76
+print(Africa["Female Life"].mean())                                         # 64
+print(Oceania["Female Life"].mean())                                        # 77
+print(NA["Female Life"].mean())                                             # 79
+print(SA["Female Life"].mean())                                             # 78
+
+x = ["Europe", "Asia", "Africa", "Oceania", "NA", "SA"]
+ym = array([76, 71, 60, 72, 74, 72])
+yf = array([82, 76, 64, 77, 79, 78])
+
+plt.figure(figsize = (10, 10))
+
+axes = plt.subplot(111)
+
+axes.bar(x, yf, color = "y", label = "Female life expectancy")              # NB do yf first otherwise ym is obscured              
+axes.bar(x, ym, color = "g", label = "Male life expectancy")
+
+plt.xticks(rotation = 90)
+plt.legend()
+plt.xlabel("Continent")
+plt.ylabel("Life expectancies")
+plt.title("Mean male and female life expectancy of continents")
+
+plt.show()                                                                  # Composite bar graph
+
+
+# Same data, but different visualisation
+
+x1 = array([1, 2, 3, 4, 5, 6])                                              # x string values to integers
+
+plt.figure(figsize = (18, 10))
+
+axes = plt.subplot(111)
+
+axes.bar(x1, yf, width = 0.4, color = "y", align = "center", label = "Female life expectancy")       
+axes.bar(x1 + 0.4, ym, width = 0.4, color = "g", align = "center", label = "Male life expectancy")            # Need numpy array, cannot + 0.4 to list
+
+plt.xticks(rotation = 90)
+plt.legend()
+plt.xlabel("Continent: Eur = 1, ASI = 2, AFR = 3, OCE = 4, NA = 5, SA = 6")
+plt.ylabel("Life expectancies")
+plt.title("Mean male and female life expectancy of continents")
+
+plt.show()
+
+# The first graph is slightly more pleasing due to the issue with the x_axis labels
+
+
+# On a country (area) level
+
+# Europe
+
+plt.figure(figsize = (25, 8))                                                                                # Need width so 25 by 10
+
+colours = ["blue", "red", "orange", "yellow", "green"]
+
+plt.bar(Europe["Country"], Europe["Overall Life"], color = colours)
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of countries belonging to the continent Europe")
+
+plt.show()                                                                                                   # Life is good in Monaco
+
+# I changed the bar colours to make it easier to distinguish one from another - it is a bit loud.
+
+
+# Asia
+
+plt.figure(figsize = (25, 8))                                    
+
+colours = ["blue","red", "orange", "yellow", "green"]
+
+plt.bar(Asia["Country"], Asia["Overall Life"], color = colours)
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of countries belonging to the continent Asia")
+
+plt.show()       # LE in Afghanistan is significantly lower
+
+
+# Africa
+
+plt.figure(figsize = (25, 8))                                    
+
+colours = ["blue","red", "orange", "yellow", "green"]
+
+plt.bar(Africa["Country"], Africa["Overall Life"], color = colours)
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of countries belonging to the continent Africa")
+
+plt.show()       # Highest LE is a British Overseas Territory
+
+
+# Oceania
+
+plt.figure(figsize = (25, 8))                                    
+
+colours = ["blue","red", "orange", "yellow", "green"]
+
+plt.bar(Oceania["Country"], Oceania["Overall Life"], color = colours)
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of countries belonging to the continent Oceania")
+
+plt.show()       # Papua New Guinea, Nauru, Tuvalu and Kiribati have significantly lower LEs
+
+
+# North America
+
+plt.figure(figsize = (25, 8))                                    
+
+colours = ["blue","red", "orange", "yellow", "green"]
+
+plt.bar(NA["Country"], NA["Overall Life"], color = colours)
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of countries belonging to the continent North America")
+
+plt.show()       # Haiti has a significantly lower LE
+
+
+# South America
+
+plt.figure(figsize = (25, 8))                                    
+
+colours = ["blue","red", "orange", "yellow", "green"]
+
+plt.bar(SA["Country"], SA["Overall Life"], color = colours)
+plt.xticks(rotation = 90)
+plt.xlabel("Country")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of countries belonging to the continent South America")
+
+plt.show()
+
+
+# SCATTER PLOTS
+
+# Compare male and female LEs
+
+plt.figure(figsize = (10, 10))     
+
+plt.scatter(df["Male Life"], df["Female Life"], marker = 'x', color = 'b')
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy")
+
+m, c = polyfit(df["Male Life"], df["Female Life"], 1)                          
+plt.plot(df["Male Life"], m*df["Male Life"] + c, color = 'r', linewidth = 4)                # Line of best fit
+
+plt.show()    # As expected a strong positive correlation
+
+
+# Compare male and overall life LEs
+
+plt.figure(figsize = (10, 5))     
+
+plt.scatter(df["Male Life"], df["Overall Life"], marker = 'o', color = 'c')
+
+plt.xlabel("Male life expectancy", fontsize = 15)
+plt.ylabel("Overall life expectancy", fontsize = 15)
+plt.title("Relationship between male and overall life expectancy", fontsize = 20)
+
+m, c = polyfit(df["Male Life"], df["Overall Life"], 1)                          
+plt.plot(df["Male Life"], m*df["Male Life"] + c, color = 'm', linewidth = 4)                # Line of best fit
+
+plt.show()
+
+
+# Compare female and overall life LEs
+
+plt.figure(figsize = (10, 8))     
+
+plt.scatter(df["Female Life"], df["Overall Life"], marker = 'x', color = 'g')
+
+plt.xlabel("Female life expectancy", fontsize = 15)
+plt.ylabel("Overall life expectancy", fontsize = 15)
+plt.title("Relationship between female and overall life expectancy", fontsize = 20)
+
+m, c = polyfit(df["Female Life"], df["Overall Life"], 1)                          
+plt.plot(df["Female Life"], m*df["Female Life"] + c, color = 'k', linewidth = 4)             # Line of best fit
+
+plt.show()
+
+
+# HISTOGRAMS
+
+# Frequency distribution of overall life
+
+bins = [50, 55, 60, 65, 70, 75, 80, 85, 90]
+
+plt.hist(df["Overall Life"], bins, histtype = "bar", color = "g", rwidth = 1)
+plt.xlabel("Overall life")
+plt.ylabel("Frequency")
+plt.show()
+
+
+# Frequency distribution of male life
+
+plt.hist(df["Male Life"], bins, histtype = "bar", color = "g", rwidth = 1)
+plt.xlabel("Male life")
+plt.ylabel("Frequency")
+plt.show()
+
+
+# Frequency distribution of female life
+
+plt.hist(df["Female Life"], bins, histtype = "bar", color = "g", rwidth = 1)
+plt.xlabel("Female life")
+plt.ylabel("Frequency")
+plt.show()
+
+
+# Different visualisations for the same data - change bins
+
+# Frequency distribution of overall life
+
+bins = [50, 60, 65, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90]
+
+plt.hist(df["Overall Life"], bins, histtype = "bar", color = "m", rwidth = 1)
+plt.xlabel("Overall life (expectancy)")
+plt.ylabel("Frequency")
+plt.show()
+
+# LE counts of 50-60 are about the same as 72-74!
+# Frequency = 0 for 86-88 (technically there is no data between 85.1-89.4, lost accuracy with chosen bin intervals)
+# Highest frequency is 74-76
+
+
+# "Zoom in" on 74-76 interval - df.iloc[90:123, :] - (NB I am also trying out different parameters with the graphs)
+
+bins2 = [74.0, 74.25, 74.5, 74.75, 75, 75.25, 75.5, 75.75, 76]
+
+plt.hist(df["Overall Life"], bins2, histtype = "bar", color = "c", rwidth = 1)
+plt.xlabel("Overall life (expectancy)", fontsize = 15)
+plt.ylabel("Frequency", fontsize = 15)
+plt.title("LE 74-76 count", fontsize = 20)
+plt.grid(True, linewidth = 3, color = "k")
+plt.show()
+
+
+# PIECHARTS
+
+# Piechart of continent distributions
+
+print(df.Continent.value_counts())                                          # Continent distribution. Now to store it.
+
+area_locations = list(df.Continent.value_counts())                          # Store as list
+Continent_index = df.Continent.value_counts().index.tolist()                # Store index as list
+
+print(area_locations)                                                       # [55, 51, 49, 34, 20, 14]
+print(Continent_index)                                                      # ['Africa', 'Europe', 'Asia', 'North America', 'Oceania', 'South America']
+
+colours = ["m", "g", "b", "y", "r", "c"]
+
+plt.pie(area_locations,
+        labels = Continent_index,
+        colors = colours,
+        explode = (0, 0, 0, 0, 0, 0.5),
+        shadow = True,
+        startangle = 270,
+        autopct = "%1.1f%%")
+
+plt.title("Area locations by continent", fontsize = 18)
+plt.show()
+
+
+# If you wanted to do a piechart based on the first letters of countries in Europe...this is just for fun, but it could be useful with other datasets
+
+Europe.head(5)                                                                                            # df from earlier
+
+Europe_letters = Europe.Country.str[0]                                                                    # First character of Country column
+
+Europe_letters                                                                                            # Cool letter distribution
+
+Europe_letters.value_counts().sort_values(ascending = True)                                               # Sorts by smallest to biggest (can sort with both) 
+Europe_letters.value_counts().sort_index(ascending = True)                                                # Alphabetically sorted (otherwise random)
+
+Europe_letters_count = list(Europe_letters.value_counts().sort_index(ascending = True))
+Europe_letter_index = Europe_letters.value_counts().sort_index(ascending = True).index.tolist()
+
+Europe_letters_count                                                                                      # [5, 4, 3, 1, 2, 3, 5, 1, 4, 1, 4, 3, 2, 2, 2, 7, 2]
+Europe_letter_index                                                                                       # ['A','B','C','D','E','F','G','H','I','J','L','M','N','P','R','S','U']
+
+Europe_letter_index_numbers = ['A(5)','B(4)','C(3)','D(1)','E(2)',                                        # There is probably a better way to code this
+                               'F(3)','G(5)','H(1)','I(4)','J(1)',
+                               'L(4)','M(3)','N(2)','P(2)','R(2)',
+                               'S(7)','U(2)'] 
+
+len(Europe_letter_index)                                                                                  # 17 elements - 9 letters missing
+
+plt.figure(figsize = (18, 12))                                                                            # Need larger figure
+
+colours = ["m", "g", "b", "y", "r", "c"]                                                                  # Colours repeat to make 17
+
+plt.pie(Europe_letters_count,
+        labels = Europe_letter_index_numbers,                         
+        colors = colours,
+        explode = (0, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        shadow = True,
+        startangle = 180,
+        autopct = "%1.1f%%")
+                                            
+plt.title("First letters of areas in Europe", fontsize = 18)
+plt.show()
+
+
+# LINEGRAPHS
+
+# SA - linegraph
+
+plt.figure(figsize = (10, 10))                                                     
+
+plt.plot(list(SA.Country), SA["Overall Life"], linewidth = 4, color = "g")
+
+plt.xticks(rotation = 90)
+plt.xlabel("South American area")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of South American areas", fontsize = 15) 
+
+plt.show()
+
+
+# Oceania - linegraph
+
+plt.figure(figsize = (10, 10))                                                     
+
+plt.plot(list(Oceania.Country), Oceania["Overall Life"], linewidth = 4, color = "r")
+
+plt.xticks(rotation = 90)
+plt.xlabel("Oceania area")
+plt.ylabel("Overall life expectancy")
+plt.title("Overall life expectancy of Oceania areas", fontsize = 15) 
+
+plt.show()       # This graph shows a sharp drop for Papua New Guinea, Nauru, Tuvalu and Kiribati
+
+
+# Line graphs have limited use for the remaining continents as their are too many countries involved
+# Now to have multiple lines on a linegraph - common x axis
+
+# SA - three lines on one figure
+
+plt.figure(figsize = (15, 10))                                                     
+
+plt.plot(list(SA.Country), 
+         SA["Overall Life"], 
+         label = "Overall Life exp", 
+         marker = "D", 
+         markersize = 15, 
+         linewidth = 4, 
+         color = "g")
+
+plt.plot(list(SA.Country), 
+         SA["Male Life"], 
+         label = "Male Life exp", 
+         marker = "o", 
+         markersize = 15, 
+         linewidth = 4, 
+         color = "b")
+
+plt.plot(list(SA.Country), 
+         SA["Female Life"], 
+         label = "Female Life exp", 
+         marker = "^", 
+         markersize = 15,
+         linewidth = 4, 
+         color = "m")
+
+plt.xticks(rotation = 90)
+plt.xlabel("South American area")
+plt.legend()
+plt.grid(True)
+plt.title("Life expectancies of South American areas", fontsize = 15) 
+
+plt.show()
+
+
+# BOXPLOTS
+
+# Simple boxplot - female LE for SA
+
+boxplot(x = SA.Continent, y = df["Female Life"])
+plt.show()
+
+
+# Multiple boxplot and swarmplot (common y axis)
+
+plt.figure(figsize = (20, 10))                                                     
+
+ax = boxplot(x = df.Continent,
+             y = df["Overall Life"],
+             palette = "Set1",
+             width = 0.70,
+             linewidth = 2)
+
+ax = swarmplot(x = df.Continent,
+               y = df["Overall Life"],
+               color = ".05",
+               size = 8,
+               marker = "x",
+               linewidth = 2)
+
+plt.xlabel("Continent", fontsize = 15)
+plt.ylabel("Overall Life Expectancy", fontsize = 15)
+
+plt.show()                
+
+# Could easily do the same for Male Life and Female Life by changing the parameters
+
+
+# Multiple boxplots - slightly different type of boxplot
+
+Europe_life_expectancies = {"EUR_OVR": list(Europe["Overall Life"]),                # Make dictionary first
+                            "EUR_M": list(Europe["Male Life"]),
+                            "EUR_F": list(Europe["Female Life"])}
+
+figure, axes = plt.subplots()
+
+axes.boxplot(Europe_life_expectancies.values(),
+             meanline = True, 
+             showmeans = True)
+
+plt.xlabel("Life expectancies", fontsize = 15)
+plt.ylabel("Years", fontsize = 15)
+plt.title("3 boxplots for life expectancies", fontsize = 20)
+
+axes.set_xticklabels(Europe_life_expectancies.keys(), fontsize = 14)
+
+plt.show()
+
+
+# NUMPY SPECIAL FUNCTION PLOTS
+
+# Start with the basic y = x
+
+x = df["Overall Life"]
+y = x
+plt.plot(x, y)
+
+plt.xlabel("Overall Life")
+plt.ylabel("Overall Life")
+
+plt.show()
+
+
+# y = log(x) - base e.
+
+x = df["Overall Life"]
+y = log(x)
+plt.plot(x, y, linewidth = 5, color = "g")
+
+plt.xlabel("Overall Life")
+plt.ylabel("Natural Logarithm of Overall Life")
+
+plt.show()
+
+
+# y = log(x) - base 10.
+
+x = df["Overall Life"]
+y = log10(x)
+plt.plot(x, y, linewidth = 5, color = "m")
+
+plt.xlabel("Overall Life")
+plt.ylabel("Logarithm base 10 of Overall Life")
+
+plt.show()        # This graph at first glance looks the same, but the y-axis values are of course different
+
+
+# Plot both natural log and base 10
+
+x = df["Overall Life"]
+y1 = log(x)
+y2 = log10(x)
+
+plt.plot(x, y1, linewidth = 2, color = "r", label = "Natural log")
+plt.plot(x, y2, linewidth = 2, color = "c", label = "log base 10")
+
+plt.xlabel("Overall Life", fontsize = 15)
+plt.ylabel("Logarithm representations", fontsize = 15)
+plt.legend()
+
+plt.show()
+
+
+# y = exp(x) 
+
+x = df["Overall Life"]
+y = exp(x)
+plt.plot(x, y, linewidth = 3, color = "k")
+
+plt.xlabel("Overall Life")
+plt.ylabel("Exponential of Overall Life")
+
+plt.show()                                                 # Big jump when the x value goes from 85 to 89.5
+
+
+help("scipy.special")                                      # NB print(dir("scipy.special")) doesn't work for some reason. Loads of other functions.
+
+
+# y = cbrt(x). Cube root.
+
+# NB scipy.cbrt is deprecated, have to use numpy
+
+x = df["Overall Life"]
+y = cbrt(x)
+plt.plot(x, y)
+
+plt.xlabel("Overall Life")
+plt.ylabel("Cube Root of Overall Life")
+
+plt.show()
+
+
+# Make your own function - again just for demonstration rather than actual usefulness
+
+plt.figure(figsize = (18, 5))                                              
+
+f = lambda x: x*sin(x)*cbrt(x)*log(x - 10)                                                               # I just made this up, f could be anything you want
+
+x = df["Overall Life"]
+y = df["Overall Life"].apply(f)
+
+plt.plot(x, y, linewidth = 3, linestyle = "dashed", marker = "^", color = "k")
+
+plt.xlabel("Overall Life", fontsize = 15)
+plt.grid(True)
+
+plt.show()         # Pretty cool looking graph
+
+
+# Relplots (with hue)
+
+r = relplot(x = df["Male Life"].values,                          # have to use .values otherwise ValueError
+            y = df["Female Life"].values, 
+            hue = df["Continent"].values,
+            palette = ["b", "r", "m", "k", "y", "g"],
+            data = df)
+
+r.fig.set_size_inches(30, 12)                                    # figsize doesn't work with seaborn, use this command 
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.grid(True)
+
+plt.show()                                                       
+
+
+# Data is clustered in 68-83 x region and 73-86 y region (visually) - plot a snapshot of this
+
+# Zoomed in relplot
+
+r = relplot(x = df["Male Life"].values,                          
+            y = df["Female Life"].values, 
+            hue = df["Continent"].values,
+            palette = ["b", "r", "m", "k", "y", "g"],
+            marker = "D",
+            data = df)
+
+r.fig.set_size_inches(30, 12)                                     
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.xlim([68, 83])
+plt.ylim([73, 86])
+plt.grid(True)
+
+plt.show()
+
+
+# Catplot
+
+all_continents = list(df.Continent)                          # Made lists because otherwise catplot fires a ValueError
+ovl_life = list(df["Overall Life"])
+colours = ["b", "r", "m", "c", "y", "g"]
+
+c = catplot(x = all_continents,                          
+            y = ovl_life, 
+            kind = "strip",                                  # This looks cool with 'boxen' or 'violin'
+            palette = colours,
+            data = df)
+
+c.fig.set_size_inches(20, 12)
+
+plt.xlabel("Continent", fontsize = 20)
+plt.ylabel("Overall life expectancy", fontsize = 20)
+plt.xticks(rotation = 90, fontsize = 15)
+
+plt.show()
+
+
+# To be continued - I will code some more plots - these are the fundamental plots for most data.
