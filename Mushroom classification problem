@@ -100,7 +100,7 @@ df["class"]                           # Target column
 
 df["class"].nunique()                 # edible = e, poisonous = p
 
-df[["class",                          # I couldn't find a more elegant way to code this - gives unique values for each column (can be done in SQL instead)
+df[["class",                          # NB I now know a more elegant way to code this with the list operator - gives unique values for each column (can be done in SQL instead)
     "cap-shape",
     "cap-surface",
     "cap-color",
