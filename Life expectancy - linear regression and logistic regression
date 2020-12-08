@@ -1,0 +1,738 @@
+# Country life expectancy (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - Aman Saxena
+# Original source - https://www.kaggle.com/amansaxena/lifeexpectancy
+
+
+'''
+Summary of findings:
+(1) Life expectancy (LE) between countries and continents varies greatly - there are significant outliers
+(2) Linear regression models using male LE to predict female LE are generally accurate, especially if outliers are removed
+(3) I was able to get a ml model that was 100% accurate by putting the female LEs into intervals and using logistic regression
+(4) Most female LEs were predicted in the interval (70-80] 
+'''
+
+''' 
+***NB This data needed to be cleaned first***
+In the Country column you must remove all special characters
+I removed , ; - ' 
+São Tomé and Príncipe and Côte d'Ivoire were changed to remove accented characters
+If you do not make these changes you get a unicodedecodeerror 'utf-8
+'''
+
+import numpy
+from numpy import polyfit
+from numpy import arange
+from numpy import array
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix
+
+from matplotlib import pyplot as plt
+
+from seaborn import relplot
+
+import pandas
+from pandas import read_csv
+from pandas import DataFrame
+from pandas import cut
+from pandas import concat
+
+df = read_csv("LE.csv")
+
+Europe = df[df["Continent"] == "Europe"]                                  # Split dfs
+Asia = df[df["Continent"] == "Asia"]
+Africa = df[df["Continent"] == "Africa"]
+Oceania = df[df["Continent"] == "Oceania"]
+NA = df[df["Continent"] == "North America"]
+SA = df[df["Continent"] == "South America"]
+
+
+# Task one - linear regression - using male life expectancy to predict female life expectancy
+
+# Plotting all continents to see which has the best relationship between male LE and female LE
+
+
+plt.figure(figsize = (5, 5))     
+
+plt.scatter(Europe["Male Life"], Europe["Female Life"], marker = 'x', color = 'b')
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (Europe)")
+
+m, c = polyfit(Europe["Male Life"], Europe["Female Life"], 1)                          
+plt.plot(Europe["Male Life"], m*Europe["Male Life"] + c, color = 'k', linewidth = 3)                # Line of best fit
+
+plt.show()
+
+
+plt.figure(figsize = (5, 5))     
+
+plt.scatter(Asia["Male Life"], Asia["Female Life"], marker = 'x', color = 'b')
+
+m, c = polyfit(Asia["Male Life"], Asia["Female Life"], 1)                          
+plt.plot(Asia["Male Life"], m*Asia["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (Asia)")
+
+plt.show()
+
+
+plt.figure(figsize = (5, 5))  
+
+plt.scatter(Africa["Male Life"], Africa["Female Life"], marker = 'x', color = 'b')
+
+m, c = polyfit(Africa["Male Life"], Africa["Female Life"], 1)                          
+plt.plot(Africa["Male Life"], m*Africa["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (Africa)")
+
+plt.show()
+
+
+plt.figure(figsize = (5, 5))  
+
+plt.scatter(Oceania["Male Life"], Oceania["Female Life"], marker = 'x', color = 'b')
+
+m, c = polyfit(Oceania["Male Life"], Oceania["Female Life"], 1)                          
+plt.plot(Oceania["Male Life"], m*Oceania["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (Oceania)")
+
+plt.show()
+
+
+plt.figure(figsize = (5, 5))  
+
+plt.scatter(NA["Male Life"], NA["Female Life"], marker = 'x', color = 'b')
+
+m, c = polyfit(NA["Male Life"], NA["Female Life"], 1)                          
+plt.plot(NA["Male Life"], m*NA["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (North America)")
+
+plt.show()
+
+
+plt.scatter(SA["Male Life"], SA["Female Life"], marker = 'x', color = 'b')
+
+m, c = polyfit(SA["Male Life"], SA["Female Life"], 1)                          
+plt.plot(SA["Male Life"], m*SA["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (South America)")
+
+plt.show()
+
+
+plt.figure(figsize = (15, 15))  
+
+plt.scatter(Africa["Male Life"], Africa["Female Life"], marker = 'x', color = 'b')
+
+m, c = polyfit(Africa["Male Life"], Africa["Female Life"], 1)                          
+plt.plot(Africa["Male Life"], m*Africa["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (Africa)")
+
+plt.show()
+
+
+# Visually, Africa has a good line of best fit - focus on Africa
+
+Africa = Africa.reset_index(drop = True)
+
+# Outliers
+# Drop Seychelles - Female LE is significantly greater than male
+# Drop Botswana - an outlier because the female LE is significantly lower than the male LE
+# Drop Swaziland - same reason as Botswana
+
+# These can be visualised on a plot
+# NB making a new df from columns is simple, harder with rows
+# Since there are only three rows to be dropped, use dictionary
+
+dictionary = {"Rank": [116, 212, 220],                  
+              "Country": ["Seychelles", "Botswana", "Swaziland"],
+              "Overall Life": [74.7, 54.5, 51.6],
+              "Male Life": [70.2, 56.3, 52.2],
+              "Female Life": [79.4, 52.6, 51.0],
+              "Continent": ["Africa", "Africa", "Africa"]}
+
+outliers = DataFrame(dictionary)
+
+Africa2 = Africa[Africa.index != 6]
+Africa3 = Africa2[Africa2.index != 44]
+Africa4 = Africa3[Africa3.index != 52]      # This removes rows (above countries) - tried to do in one line, but fired a truth ambiguity error
+
+
+# Now with two separate dfs, scatter plot can be shown highlighting the outliers
+
+plt.figure(figsize = (10, 10))  
+
+plt.scatter(Africa4["Male Life"], Africa4["Female Life"], marker = 'D', color = 'b')
+
+plt.scatter(outliers["Male Life"], outliers["Female Life"], marker = 'D', color = 'r')
+
+m, c = polyfit(Africa4["Male Life"], Africa4["Female Life"], 1)                          
+plt.plot(Africa4["Male Life"], m*Africa4["Male Life"] + c, color = 'k', linewidth = 3)
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy (Africa)")
+
+plt.show()
+
+
+# Regression model with three outliers removed - use MLE to predict FLE
+
+Africa4 = Africa4.reset_index(drop = True)
+
+X = Africa4[["Male Life"]]
+y = Africa4[["Female Life"]]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+
+LR = LinearRegression()         
+
+LR.fit(X_train, y_train)        
+
+print(LR.intercept_)            # -1.48539196
+print(LR.coef_)                 # 1.08346962
+                                
+# Equation of the regression line: Female life = 1.08346962*(Male life) - 1.48539196 
+
+x1 = array(X_train["Male Life"])
+y1 = array(y_train["Female Life"])
+y2 = array(1.08346962*x1 - 1.48539196)             # y = mx + c -> Regression Line
+
+plt.figure(figsize = (10, 10))
+
+plt.scatter(x1, y1, marker = 'x', color = 'm')
+plt.plot(x1, y2, color = 'k', linewidth = 2)
+
+plt.xlabel("X_train: Male life expectancy", fontsize = 15)
+plt.ylabel("y_train: Female life expectancy", fontsize = 15)
+plt.title("Relationship between male and female life expectancy (Africa)", fontsize = 17)
+
+plt.show()             
+
+# Changing the xlim and ylim to zero will show that the equation is roughly correct
+
+# It would be nice to extrapolate the regression line to the y-axis
+
+z1 = arange(-5, 50)
+z2 = array(1.08346962*z1 - 1.48539196) 
+
+plt.figure(figsize = (10, 10))
+
+plt.scatter(x1, y1, marker = 'x', color = 'm')
+plt.plot(x1, y2, color = 'k', linewidth = 2)                                    # Regression line
+plt.plot(z1, z2, color = 'k', linewidth = 2, linestyle = 'dashed')              # Extension (dashed)
+
+plt.xlim(0)
+plt.ylim(0)
+
+plt.xlabel("X_train: Male life expectancy", fontsize = 15)
+plt.ylabel("y_train: Female life expectancy", fontsize = 15)
+plt.title("Relationship between male and female life expectancy (Africa)", fontsize = 17)
+
+plt.show()       # Now it's clear that the intercept is at -1.48539196
+
+
+# Now look at X_test, y_test and the model predictions
+
+input_values = list(X_test["Male Life"])
+actual = list(y_test["Female Life"])
+
+print(input_values)                                     # [60.7, 54.3, 50.3, 63.6, 52.4, 72.2] (changes when code reran)
+print(actual)                                           # [65.8, 56.8, 54.5, 66.3, 54.5, 79.2] (changes when code reran)
+
+model_predictions = LR.predict(X_test)
+model_predictions                                       # array([[64.28121393], [57.34700837], [53.01312989], [67.42327583], [55.28841609], [76.74111456]])
+
+# Work out the approximate accuracy by subtracting model_predictions from actual - need to do some type changes and reshaping:
+
+actual = array(y_test["Female Life"])                   # convert to numpy array
+
+print(type(model_predictions))                          # nd array
+print(type(actual))                                     # nd array
+
+actual = actual.reshape(-1)
+model_predictions = model_predictions.reshape(-1)       # makes 1d array (otherwise subtracting will be wrong for this purpose)
+
+difference = actual - model_predictions
+difference                                
+
+# array([ 1.51878607, -0.54700837,  1.48687011, -1.12327583, -0.78841609, 2.45888544])
+# exact would imply exactly zero, model_underestimates = 3, model_overestimates = 3 (so balanced errors)
+# biggest deviation is + 2.4588...(yrs)
+
+
+# Predicting the unknown - values that lie outside of the MLE range
+
+pred1 = LR.predict([[30]])
+pred2 = LR.predict([[80]])
+pred3 = LR.predict([[90]])
+
+print(pred1)                               # MLE = 30 --> FLE = 31.02 (2dp)
+print(pred2)                               # MLE = 80 --> FLE = 85.19 (2dp)
+print(pred3)                               # MLE = 90 --> FLE = 96.03 (2dp)
+
+
+LR.score(X_test, y_test)                   # 0.9725283083516146 - good!
+
+
+# Now use logistic regression on the same dataframe (Africa4)
+# Need FLE to be a categorical output - use histogram to put them into bins and then assign labels - this is the first time I have thought about this idea
+
+LogR = LogisticRegression()
+
+plt.figure(figsize = (6, 6))     
+
+bins = [50, 60, 70, 80, 90]
+
+plt.hist(Africa4["Female Life"], bins, histtype = "bar", color = "g", rwidth = 1)
+
+plt.xlabel("Female life")
+plt.ylabel("Frequency")
+plt.title("Africa life expectancy")
+
+plt.xticks(arange(50, 90, 10))
+plt.yticks(arange(0, 28, 2))
+
+plt.xlim(50, 90)
+
+plt.grid(True, color = "k")
+
+plt.show()
+
+
+len(Africa4["Female Life"])                                                                  # Agrees with histogram count
+
+Africa4                                                                                      # Current df
+
+bins = [50, 60, 70, 80, 90]
+
+Africa4["Female Life"] = cut(Africa4["Female Life"], bins)                                   # cut is a clever little function that puts the continuous data into intervals (essentially categories)  
+
+Africa4                                                                                      # Now FLE is in intervals
+
+Africa4[["Female Life"]] = Africa4[["Female Life"]].apply(LabelEncoder().fit_transform)      # Encode to get actual categories
+
+Africa4   
+
+# Complicated, but now we have a df where the cts variables have been categorised
+# 0 = (50, 60], 1 = (60, 70] , 2 = (70, 80], 3 = (80, 90]
+# Thus we can apply logistic regression 
+
+X = Africa4[["Male Life"]]
+y = Africa4[["Female Life"]]                  # Now categorical
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+
+type(y_train)                                 # Panda series
+
+y_train = y_train.values.reshape(-1)          # Needs reshaping before logistic regression will work!
+
+type(y_train)                                 # numpy nd array
+
+LogR.fit(X_train, y_train)                    
+
+
+# Try some predictions to make sure the model is sensible
+
+LogR.predict([[80]])                          # Returns 3 which is (80, 90]
+LogR.predict([[40]])                          # Returns 0 which is (50, 60]
+LogR.predict([[59]])                          # Returns 1 which is (60, 70]
+
+
+LogR.score(X_test, y_test)                   # 1.0 
+
+# So all this coding made a perfect model with logistic regression
+# The cost of doing so is that the predictions only return intervals e.g. (50, 60]
+# Changing the bins can make the intervals finer (e.g. (50, 55]), but this reduces the accuracy of the model
+
+# We can visualise what has happened with logistic regression:
+
+plt.figure(figsize = (7, 7))  
+
+plt.scatter(Africa4["Male Life"], Africa4["Female Life"], marker = '^', color = 'r')
+
+plt.xlabel("Male life expectancy", fontsize = 10)
+plt.ylabel("Female life expectancy", fontsize = 10)
+plt.title("Relationship between male and female life expectancy (Africa)", fontsize = 14)
+
+plt.show()
+
+
+# Same data, but separating the training and testing data sets
+
+plt.figure(figsize = (7, 7))  
+
+plt.scatter(X_train, y_train, marker = 'D', color = 'y', label = "Training data set")
+plt.scatter(X_test, y_test, marker = 'D', color = 'b', label = "Testing data set")
+
+plt.yticks(arange(0, 4, 1))      # Type 4 to include 3 on graph
+
+plt.grid(True)
+
+plt.xlabel("Male life expectancy", fontsize = 10)
+plt.ylabel("Female life expectancy", fontsize = 10)
+plt.title("Relationship between male and female life expectancy (Africa)", fontsize = 14)
+plt.legend()
+
+plt.show()
+
+
+# Back to looking at the whole df
+
+df.head(5)
+
+plt.figure(figsize = (10, 10))     
+
+plt.scatter(df["Male Life"], df["Female Life"], marker = 'x', color = 'b')
+
+plt.xlabel("Male life expectancy")
+plt.ylabel("Female life expectancy")
+plt.title("Relationship between male and female life expectancy")
+
+m, c = polyfit(df["Male Life"], df["Female Life"], 1)                          
+plt.plot(df["Male Life"], m*df["Male Life"] + c, color = 'r', linewidth = 4)                # Line of best fit
+
+plt.show()                                                                                  # As expected a strong positive correlation
+
+
+# Target variable is not even. Sample 10 values from each continent and apply model to this.
+
+Europe_sample = Europe.sample(n = 10)
+Asia_sample = Asia.sample(n = 10)
+Africa_sample = Africa.sample(n = 10)
+Oceania_sample = Oceania.sample(n = 10)
+NA_sample = NA.sample(n = 10)
+SA_sample = SA.sample(n = 10)
+
+df2 = concat([Europe_sample, 
+              Asia_sample,
+              Africa_sample,
+              Oceania_sample,
+              NA_sample, 
+              SA_sample])
+
+df2 = df2.reset_index(drop = True)
+
+df2   
+
+
+# Now we can visualise the sampled datframe (df2) with a relplot, hueing each continent sample of 10
+
+r = relplot(x = df2["Male Life"].values,                         # have to use .values otherwise ValueError
+            y = df2["Female Life"].values, 
+            hue = df2["Continent"].values,
+            palette = ["b", "r", "m", "k", "y", "g"],
+            s = 100,
+            data = df2)
+
+r.fig.set_size_inches(15, 10)                                    # figsize doesn't work with seaborn, use this command 
+
+plt.xlabel("Male life expectancy", fontsize = 20)
+plt.ylabel("Female life expectancy", fontsize = 20)
+plt.title("Sampled dataframe for ml model", fontsize = 30)
+plt.legend(loc = "upper left", fontsize = 15)
+
+r._legend.remove()                                               # the default legend is in an unhelpful place
+
+plt.grid(True)
+
+plt.show()
+
+
+# Apply linear regression to df2
+
+X = df2[["Male Life"]]
+y = df2[["Female Life"]]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+
+LR = LinearRegression()
+LR.fit(X_train, y_train)
+
+print(LR.intercept_)            # 0.49911
+print(LR.coef_)                 # 1.06165685
+                                
+# Equation of the line: Female life = 1.06165685*(Male life) + 0.49911 
+# (Equation of Africa4: Female life = 1.08346962*(Male life) - 1.48539196)
+
+# Visualise regression line of sampled dataframe (df2) and the previous analysed dataframe (Africa4) to compare slopes and intercepts
+
+plt.figure(figsize = (10, 10))
+
+x = arange(0, 90)
+
+y1 = 1.06165685*x + 0.49911
+y2 = 1.08346962*x - 1.48539196
+
+plt.plot(x, y1, label = "df2: Female life = 1.06165685*(Male life) + 0.49911", linestyle = "dashed", linewidth = 3)
+plt.plot(x, y2, label = "Africa4: Female life = 1.08346962*(Male life) - 1.48539196", linestyle = "dashed", linewidth = 3)
+
+plt.xlabel("Male life expectancy", fontsize = 20,)
+plt.ylabel("Female life expectancy", fontsize = 20)
+plt.title("Regression line comparison: df2 and Africa4", fontsize = 25)
+plt.legend(fontsize = 13)
+
+plt.xlim(0, 10)
+plt.ylim(0, 10)
+
+plt.grid(True)
+
+plt.show()
+
+# The gradients are almost exactly the same, thus giving the impression that the lines are parallel (the lines do intercept)
+# Zoomed in it is clear that the y intercepts are different
+# df2 should yield higher outputs than Africa4 due to the positive intercept
+
+
+# A quick look at X_test, y_test and the model predictions
+
+print(X_test)
+print(y_test)
+
+model_predictions = LR.predict(X_test)
+model_predictions                          
+
+# Model overestimates = 3, Model underestimates = 3. Highest deviation = +8.31725879999999 (Changes when code reran)
+
+
+# Predicting the unknown - MLEs that lie outside the range
+
+print(LR.predict([[40]]))            # 40yr male --> 41.75030083yr old female
+print(LR.predict([[100]]))           # 100yr male --> 107.89604045yr old female
+
+# Prediction gap increases as age increases
+
+LR.score(X_test, y_test)             # 0.8136426926537322 (changes when code reran) 
+
+
+# Try a logistic regression model on df2
+
+df2
+
+bins = [50, 60, 70, 80, 90]
+
+df2["Female Life"] = cut(df2["Female Life"], bins)                                                       # Again changing values to intervals
+
+df2[["Female Life"]] = df2[["Female Life"]].apply(LabelEncoder().fit_transform)                          # Change intervals to labels for logisitic regression
+
+X = df2[["Male Life"]]
+y = df2[["Female Life"]]                                                                                 # Non-continuous so no ValueError: Unknown label type: 'continuous'
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.10, random_state = 42)
+
+y_train = y_train.values.reshape(-1)                                                                     # Needs reshaping before logistic regression will work!
+
+LogR = LogisticRegression()
+
+LogR.fit(X_train, y_train)
+
+LogR.score(X_test, y_test)                                                                               # 0.6666666666666666 (changes when code reran)
+
+
+# Visualise what is happening
+
+plt.figure(figsize = (7, 7))  
+
+plt.scatter(X_train, y_train, marker = 'D', color = 'y', label = "Training data set")
+plt.scatter(X_test, y_test, marker = 'D', color = 'b', label = "Testing data set")
+
+plt.yticks(arange(0, 4, 1))      
+
+plt.grid(True)
+
+plt.xlabel("Male life expectancy", fontsize = 10)
+plt.ylabel("Female life expectancy", fontsize = 10)
+plt.title("Relationship between male and female life expectancy (sampled dataframe: df2)", fontsize = 14)
+plt.legend()
+
+plt.show()
+
+# No representation from X_test for (50, 60] interval 
+# Overlap - e.g. Male LE of 66 could imply 1 or 2 (e.g. (60, 70] or (70, 80])
+
+
+# Change the test_size to 20%
+
+X = df2[["Male Life"]]
+y = df2[["Female Life"]] 
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+y_train = y_train.values.reshape(-1)              
+
+LogR = LogisticRegression()
+
+LogR.fit(X_train, y_train)        
+
+LogR.score(X_test, y_test)                   # 0.75 - so increased the accuracy just by increasing the test size
+
+
+# Visualise what is happening again
+
+plt.figure(figsize = (7, 7))  
+
+plt.scatter(X_train, y_train, marker = 'D', color = 'y', label = "Training data set")
+plt.scatter(X_test, y_test, marker = 'D', color = 'b', label = "Testing data set")         # Now 12 points
+
+plt.yticks(arange(0, 4, 1))      
+
+plt.grid(True)
+
+plt.xlabel("Male life expectancy", fontsize = 10)
+plt.ylabel("Female life expectancy", fontsize = 10)
+plt.title("Relationship between male and female life expectancy (sampled dataframe: df2)", fontsize = 14)
+plt.legend()
+
+plt.show()
+
+# Still no representation from X_test for (50, 60] interval - this would definitely increase the accuracy 
+# MLE in 70-75 --> 2 guaranteed, so increased accuracy
+
+
+# Attempt to improve logistic regression model - use Grid Search CV to determine the best regularization (value of C)
+
+y_test = y_test.values.ravel()                                       # You have to reshape Y-train and y_test to fit LogR, otherwise DataConversionWarning
+
+c_values = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
+
+model = GridSearchCV(LogR, {"C": c_values}, cv = 2)                  # Drop the () from LogR
+
+model.fit(X_test, y_test)
+
+cvresults = DataFrame(model.cv_results_)
+cvresults                                                            # Optimal value of C is actually 0.01
+
+
+LogR2 = LogisticRegression(C = 0.01)
+
+LogR2.fit(X_train, y_train)
+
+LogR2.score(X_test, y_test)                                          # Increased accuracy to 0.9166666666666666
+
+
+cm2 = confusion_matrix(y_test, LogR2.predict(X_test))
+cm2
+
+# Notes about cm2:
+# Prediction 0 is left off (see graph above)
+# One model prediction of (70, 80] when actually interval is (60, 70]
+
+
+# A look at the probabilities 
+
+print(X_test)
+print(y_test)                                                # You will want these printed to compare
+
+prediction_probabilities = LogR2.predict_proba(X_test)       # e.g. prob(model.predict(X_test)) - could use .round(3) if there are unhelpful outputs 
+prediction_probabilities                                     # e.g. based on X_test what is the probability of predicting each category in y_test
+
+# The prediction probabilities are not very definite
+# Recall that 0 = (50, 60], 1 = (60, 70] , 2 = (70, 80], 3 = (80, 90] 
+# An X_test value of 76.7 ---> P(0) = 0.00402785, P(1) = 0.03594281, P(2) = 0.45616399 and P(3) = 0.50386535
+# E.g. Male LE of 76.7 years --> Female LE of (70, 80] (accuracy = 45.6%) or Female LE of (80, 90] (accuracy = 50.4%) and others trivial 
+# NB summing [0.00402785, 0.03594281, 0.45616399, 0.50386535] --> 1
+
+pp = prediction_probabilities.tolist()                                                                          # To get rid of numpy nd array
+
+pp                                                                                                              # Nested lists - use for loop to separate into individual lists
+
+for i in pp:
+    print(i)
+    
+l1 = [0.08440724315323585, 0.23955606332489868, 0.5992333409962651, 0.07680335252560043]                        # E.g. for first X_test element, these are the probabilities of predicting each category
+l2 = [0.002507279482262101, 0.02574310720475743, 0.39859853995161987, 0.5731510733613606]                       # E.g. for second X_test element, these are the probabilities of predicting each category etc
+l3 = [0.0040278519692584225, 0.03594280772095447, 0.45616399068679786, 0.5038653496229892]
+l4 = [0.04112677313269457, 0.16191910721000183, 0.6441795872605842, 0.15277453239671943]
+l5 = [0.21715290175699223, 0.35578763622750864, 0.4084264357749873, 0.018633026240511785]
+l6 = [0.03572683112390635, 0.14912524799033894, 0.6445338955842065, 0.1706140253015482]
+l7 = [0.001136911069922088, 0.014576086505068276, 0.30921562277259135, 0.6750713796524183]
+l8 = [0.04346277538050405, 0.16716202895355978, 0.6433572543093098, 0.14601794135662638]
+l9 = [0.09265113141119627, 0.2509409891035205, 0.5874512437010001, 0.06895663578428325]
+l10 = [0.01668706065296302, 0.09329376277334786, 0.6102050734973969, 0.27981410307629223]
+l11 = [0.009404318701378589, 0.06413617273513761, 0.5560037334588193, 0.3704557751046645]
+l12 = [0.009079466942935158, 0.06264879136808238, 0.5521848784535722, 0.3760868632354102]                       # NB these lists etc all change when code reran
+
+# It is hard to picture what is going on with these lists - show all 12 on a single plot as piecharts:
+
+label = ["(50-60]", "(60-70]", "(70-80]", "(80-90]"]
+
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows = 1, ncols = 4, figsize = (22, 15))
+fig, (ax5, ax6, ax7, ax8) = plt.subplots(nrows = 1, ncols = 4, figsize = (22, 15))
+fig, (ax9, ax10, ax11, ax12) = plt.subplots(nrows = 1, ncols = 4, figsize = (22, 15))
+
+ax1.pie(l1, labels = label, autopct = "%1.1f%%")
+ax2.pie(l2, labels = label, autopct = "%1.1f%%")
+ax3.pie(l3, labels = label, autopct = "%1.1f%%")
+ax4.pie(l4, labels = label, autopct = "%1.1f%%")
+
+ax5.pie(l5, labels = label, autopct = "%1.1f%%")
+ax6.pie(l6, labels = label, autopct = "%1.1f%%")
+ax7.pie(l7, labels = label, autopct = "%1.1f%%")
+ax8.pie(l8, labels = label, autopct = "%1.1f%%")
+
+ax9.pie(l9, labels = label, autopct = "%1.1f%%")
+ax10.pie(l10, labels = label, autopct = "%1.1f%%")
+ax11.pie(l11, labels = label, autopct = "%1.1f%%")
+ax12.pie(l12, labels = label, autopct = "%1.1f%%")
+
+plt.show()
+
+# None of these piecharts show one slice completely dominating, therefore none of the predictions are that certain.
+
+# See which range is predicted most
+# X_test has 12 elements 
+# maximum theoretical probability for a prediction is 1 and thus maximum theoretical score = 12
+
+preds = zip(l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12)          # Zip lists l1-l12
+
+preds_count = [sum(i) for i in preds]
+preds_count                                                             # [0.5573705447772486, 1.620831801117176, 6.409553596447151, 3.4122440576584254]
+
+label = ["(50-60]", "(60-70]", "(70-80]", "(80-90]"]
+
+plt.pie(preds_count,
+        labels = label,
+        startangle = 180,
+        shadow = True,
+        explode = (0.4, 0, 0, 0),
+        autopct = "%1.1f%%")
+
+plt.title("Prediction likelihood from X_test")
+
+plt.show()
+
+# Thus most predictions will fall in the (70-80] interval for the LogR2 model
+
+preds_count_array = array(preds_count)
+
+proportions = (preds_count_array/12)*100
+proportions
+
+# Percentages on piechart were rounded - actual values: array([ 4.64475454, 13.50693168, 53.41294664, 28.43536715])
+# These values change when code reran - this would have to be done many times to get a true reflection of probability distribution of predictions
+
+# END OF CODE
