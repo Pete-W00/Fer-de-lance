@@ -1,0 +1,147 @@
+# An introduction to automation of Excel spreadsheets using openpyxl in Python
+
+# Note in this code I use the country life expectancy (dataset from Kaggle)
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - Aman Saxena
+# Original source - https://www.kaggle.com/amansaxena/lifeexpectancy
+
+
+import openpyxl
+from openpyxl import load_workbook
+from openpyxl.chart import ScatterChart, BarChart, Reference, Series
+
+import numpy
+from numpy import array
+
+import pandas
+from pandas import DataFrame
+
+
+workbook = load_workbook("LE.xlsx")                  # Make sure the excel file is saved in xlsx format, not csv (note this is the life expectancy dataset - cleaned)
+
+sheet = workbook["LE"]                               # Sheet1 is called LE
+
+
+# Metrics of data?
+
+print(sheet.max_column)                              # 6 columns
+print(sheet.max_row)                                 # 224 columns
+
+
+# Specify a cell - two ways
+
+print(sheet["F1"].value)                             # Continent (correct!)
+print(sheet.cell(row = 1, column = 6).value)         # Continent
+
+
+# Sum all of column C?
+
+column_c = [sheet.cell(row = i, column = 3).value for i in range(2, 225)]                 # NB: 224 rows --> use 225 in range
+column_c = array(column_c)                                                                # Convert to numpy array in order to use round function
+sum(column_c).round(3)                                                                    # 16164.8 - round(3) otherwise strange float value is outputted
+
+
+# Product of numerical values in row 2?
+
+row1_numeric = [sheet.cell(row = 2, column = i).value for i in range(3, 6)]
+print(row1_numeric)                                                                       # Correct values!
+row1_numeric = array(row1_numeric)                                                        # Need numpy array for product
+row1_numeric.prod()                                                                       # 716322.2
+
+
+# Column C - Column D? And Column C / Column D? 
+
+column_c = [sheet.cell(row = i, column = 3).value for i in range(2, 225)]  
+column_d = [sheet.cell(row = i, column = 4).value for i in range(2, 225)]  
+
+column_c = array(column_c)
+column_d = array(column_d)
+
+difference = column_c - column_d                                                          # Use numpy array values otherwise get strange float values in list
+quotient = column_c/column_d
+
+print(difference)
+print(quotient.round(3))
+
+
+# Elements in Column D as a percentage of elements in Column E (e.g. (85.6/93.5)*100)?
+
+column_d = [sheet.cell(row = i, column = 4).value for i in range(2, 225)]  
+column_e = [sheet.cell(row = i, column = 5).value for i in range(2, 225)]  
+
+column_d = array(column_d)
+column_e = array(column_e)
+
+percentage = (column_d/column_e)*100
+print(percentage.round(1))
+
+
+# Scatter Chart - Male Life Expectancy vs Female Life Expectancy
+
+xvalues = Reference(sheet, min_col = 4, min_row = 2, max_row = 224)
+yvalues = Reference(sheet, min_col = 5, min_row = 2, max_row = 224)
+
+series = Series(yvalues, xvalues)                                               # ****NOTE ORDER (y, x)***
+series.marker = openpyxl.chart.marker.Marker("triangle")                        # Changes from line to scatter
+series.graphicalProperties.line.noFill = True                                   # Gets rid of line
+
+scatterchart = ScatterChart()
+
+scatterchart.series.append(series)
+
+scatterchart.style = 8
+scatterchart.x_axis.title = "Male Life Expectancy"
+scatterchart.y_axis.title = "Female Life Expectancy" 
+scatterchart.title = "Male vs Female life expectancy"
+
+scatterchart.x_axis.scaling.min = 45                                           
+scatterchart.x_axis.scaling.max = 95
+
+scatterchart.y_axis.scaling.min = 45
+scatterchart.y_axis.scaling.max = 95
+
+sheet.add_chart(scatterchart, "H1")
+
+workbook.save("LE2.xlsx")
+
+
+# Other plots 
+# The current dataset isn't that suitable for barcharts and piecharts
+# Create a fictional dataset, export to excel and then use openpyxl
+
+dictionary = {"Fruits": ["Apples", "Stawberries", "Bananas", "Pears", "Kiwis"],
+              "Totals": [8, 26, 3, 10, 5]}
+              
+df = DataFrame(dictionary)
+
+df.to_excel("df.xlsx", index = False)                                               # Set index to false otherwise you get another column in excel 1,2,3...
+
+wb = load_workbook("df.xlsx")
+
+Sheet1 = wb["Sheet1"]
+
+print(Sheet1["A1"].value)                                                           # Test it all works - Fruits (correct!)
+
+
+# Bar Chart
+
+barchart = BarChart()
+
+data = Reference(Sheet1, min_col = 1, max_col = 2, min_row = 2, max_row = 6)
+
+barchart.add_data(data)
+
+barchart.style = 10
+barchart.x_axis.title = "Fruit"
+barchart.y_axis.title = "Totals" 
+barchart.title = "Fruit totals"
+
+Sheet1.add_chart(barchart, "A8")
+
+wb.save("df2.xlsx")
+
+# The x-axis of the plot is 1,2,3,4,5,6 and I can't find a way to change this in Python
+# To change in Excel - right click on chart >> select data >> edit category labels >> highlight x category labels
+
+# I programmed a piechart (similar to the above code), but it kept returning a blank graph - unknown why
+
