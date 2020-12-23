@@ -1,0 +1,244 @@
+# Weather-check dataset (dataset from github, fivethirtyeight/data)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended 
+# Author - Andrew Flowers (fivethirtyeight/data)
+# Source - https://github.com/fivethirtyeight/data/blob/master/weather-check/weather-check.csv
+
+'''
+Aim - To predict if a person typically checks a daily weather report using other data
+
+Summary: 
+Data is slightly biased as most people check the daily weather report
+Decision tree model is around 70% accurate for predicting whether or not people check the daily weather report
+Using the decision tree model as a weak learner, adaptive boosting increases the accuracy to around 75%
+It is possible to obtain a model accuracy of around 82% using adaboost on svm, but the model never predicts 'No'
+'''
+
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix, accuracy_score 
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.svm import SVC
+
+import pandas
+from pandas import read_csv, Series
+
+import numpy
+from numpy import trace
+
+import seaborn 
+from seaborn import heatmap
+
+url = "https://raw.githubusercontent.com/fivethirtyeight/data/master/weather-check/weather-check.csv"                       # Raw
+
+df = read_csv(url)
+
+
+# Is the target variable even?
+
+df["Do you typically check a daily weather report?"].value_counts()  
+
+# Target variable very uneven - so biases towards 'Yes' 
+# I could sample for evenness but then we would lose a lot of data
+# Keep current setup, but just be aware of biases
+
+
+# There is a lot of cleaning required before we can apply any machine learning algorithms - start with columns
+
+df2 = df[["How do you typically check the weather?",
+          "If you had a smartwatch (like the soon to be released Apple Watch), how likely or unlikely would you be to check the weather on that device?",
+          "Age",
+          "What is your gender?",
+          "US Region",
+          "Do you typically check a daily weather report?"]]         
+
+# Drop columns which are irrelevant, have lots of null data or are not categorical
+# Note: Put target variable in final column
+
+
+# Rename column headings as they are too long
+
+df3 = df2.rename(columns = {"How do you typically check the weather?" : "weather_check_method",
+                             "If you had a smartwatch (like the soon to be released Apple Watch), how likely or unlikely would you be to check the weather on that device?": "with_watch_weather_check?",
+                            "Age": "age",
+                            "What is your gender?": "gender",
+                            "US Region": "region",
+                            "Do you typically check a daily weather report?": "check_daily_weather_report?"})
+                            
+                            
+# Null data?
+
+df3.weather_check_method.value_counts()                                            # 11 values of '-' (for example)
+
+df3.isnull().sum()                                                                 # Not picking up NaN - these have been put as '-'
+
+df4 = df3[df3 != "-"]                                                              # ***This converted the '-' to NaN*** - neat trick
+
+df4.isnull().sum()                                                                 # Now the null values are picked up and can be dropped
+
+heatmap(df4.isnull())                                                              # Most null values are for the region column
+
+df4.dropna(inplace = True)
+
+df4 = df4.reset_index(drop = True)
+
+df4                                                                                # Loss of 31 rows
+
+
+# Encode and apply machine learning algorithms
+
+df4.apply(Series.value_counts)                                                     # 29 value counts in dataframe, but not listed helpfully. Use for loop.
+
+for i in df4.columns:
+     print(df4[i].value_counts())                                                  # Shows value counts by column
+        
+'''
+The default weather app on your phone                    209
+Local TV News                                            188
+A specific website or app (please provide the answer)    173
+The Weather Channel                                      137
+Internet search                                          124
+Radio weather                                             30
+Newspaper                                                 30
+Newsletter                                                 6
+Name: weather_check_method, dtype: int64
+Very likely          358
+Somewhat likely      267
+Very unlikely        201
+Somewhat unlikely     71
+Name: with_watch_weather_check?, dtype: int64
+45 - 59    276
+60+        256
+30 - 44    199
+18 - 29    166
+Name: age, dtype: int64
+Female    520
+Male      377
+Name: gender, dtype: int64
+Pacific               185
+South Atlantic        154
+East North Central    141
+Middle Atlantic       104
+West South Central     94
+Mountain               72
+West North Central     54
+New England            52
+East South Central     41
+Name: region, dtype: int64
+Yes    729
+No     168
+Name: check_daily_weather_report?, dtype: int64
+'''
+
+
+df5 = df4.apply(LabelEncoder().fit_transform)
+
+for i in df5.columns:
+     print(df5[i].value_counts()) 
+     
+'''
+7    209
+2    188
+0    173
+6    137
+1    124
+5     30
+4     30
+3      6
+Name: weather_check_method, dtype: int64
+2    358
+0    267
+3    201
+1     71
+Name: with_watch_weather_check?, dtype: int64
+2    276
+3    256
+1    199
+0    166
+Name: age, dtype: int64
+0    520
+1    377
+Name: gender, dtype: int64
+5    185
+6    154
+0    141
+2    104
+8     94
+3     72
+7     54
+4     52
+1     41
+Name: region, dtype: int64
+1    729
+0    168
+Name: check_daily_weather_report?, dtype: int64                                                                   # Compare for loops for encoder key, e.g. "The default weather app on your phone" = 7 
+'''
+
+
+df5                                                                                                               # The data is finally ready for categorical machine learning algorithms
+
+
+X = df5.drop("check_daily_weather_report?", axis = 1)      
+y = df5["check_daily_weather_report?"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+
+accuracy_score(y_test, DTC.predict(X_test))                                                                       # 70.55555...% accurate with Decision Tree 
+
+cm = confusion_matrix(y_test, DTC.predict(X_test))
+cm
+
+ABC = AdaBoostClassifier(base_estimator = DTC, n_estimators = 500, learning_rate = 1, random_state = 42)          # Weak learner is DTC 
+
+ABC.fit(X_train, y_train)
+
+accuracy_score(y_test, ABC.predict(X_test))                                                                       # Adaboost increased accuracy by 5% to 75.55555555...%
+
+cm2 = confusion_matrix(y_test, ABC.predict(X_test))
+cm2
+
+print(trace(cm))                 # (Quick accuracy check) trace = 127
+print(trace(cm2))                # trace = 136
+
+
+# Change weak learner to SVM to see if there is an improvement
+
+svm = SVC()
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))                                                                                             # 0.8222222222222222 with svm                      
+
+ABC2 = AdaBoostClassifier(algorithm = 'SAMME', base_estimator = svm, n_estimators = 500, learning_rate = 1, random_state = 42)          # NB for svm use: algorithm = 'SAMME'
+
+ABC2.fit(X_train, y_train)
+
+accuracy_score(y_test, ABC2.predict(X_test))                                                                                            # Adaboost - same accuracy 0.8222222222222222              
+
+cm3 = confusion_matrix(y_test, svm.predict(X_test))
+cm4 = confusion_matrix(y_test, ABC2.predict(X_test))
+
+print(cm3)
+print(cm4)
+
+# These models never predict 'No' with the selected X_test - this was the issue with the target variable being so uneven.
+# Better off using the slightly less accurate ABC - otherwise prediction always 'No'
+
+
+# Use ABC to make predictions 
+# A 'No' prediction should be possible with the right inputs
+
+predictions = ABC.predict([[2, 0, 2, 1, 6], [7, 0, 0, 0, 1], [1, 3, 1, 0, 6]])
+print(predictions)                                                                                     # [1 1 0]
+
+# A 'No' prediction is possible for [1, 3, 1, 0, 6]
+# Interpretation: The following person does not check the daily weather report:
+# (1) Person checks the weather using the internet
+# (2) Very unlikely that they would use a watch to check the weather 
+# (3) Aged 30 - 44
+# (4) Female
+# (5) From South Atlantic
