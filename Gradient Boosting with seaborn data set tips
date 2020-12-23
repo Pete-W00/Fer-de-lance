@@ -1,0 +1,52 @@
+# Gradient Boosting - short commit for syntax (will put in another on gradient boosting with a bigger data set)
+
+# Seaborn dataset tips:
+# ML, classification: predicting which day people had their meals from other data provided
+
+
+import sklearn
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score 
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import GradientBoostingClassifier
+
+import seaborn as sns
+
+df = sns.load_dataset("tips")
+df
+
+df2 = df[["sex", "smoker", "time", "day"]]                     # Filter for categorical variables - Note the position of day (the target variable)
+df2
+
+df3 = df2.apply(LabelEncoder().fit_transform)                           
+df3
+
+X = df3.drop("day", axis = 1)      
+y = df3["day"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+
+GBC = GradientBoostingClassifier()                             # Untuned model - as it is by default basically
+GBC.fit(X_train, y_train)
+GBC.score(X_test, y_test)                                      # 0.7142857142857143
+accuracy_score(y_test, GBC.predict(X_test))                    # 0.7142857142857143 (same value, different syntax for the same thing - I prefer this way)
+
+
+# Example model tunings
+
+GBC2 = GradientBoostingClassifier(n_estimators = 150)
+GBC2.fit(X_train, y_train)
+GBC2.score(X_test, y_test)                                     # 0.7142857142857143 still
+
+GBC3 = GradientBoostingClassifier(n_estimators = 150, learning_rate = 1, max_depth = 1, random_state = 42)
+GBC3.fit(X_train, y_train)
+GBC3.score(X_test, y_test)                                     # 0.7142857142857143 still - probable max
+
+
+# Use model for predictions
+
+GBC.predict([[0, 1, 0]])                                       # array([1]) - e.g. female who smokes at dinner ---> prediction is Sat (with about 71% accuracy)
+
+
+# End. Short piece of code to understand the syntax. Similar syntax to other ml models.
