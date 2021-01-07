@@ -1,0 +1,600 @@
+# Mushroom classification problem (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. 
+# Author - UCI Machine Learning
+# Original source - https://www.kaggle.com/uciml/mushroom-classification
+
+
+# Problem: Predicting the habitats of mushrooms (predicting if the mushrooms are safe to eat is too simple as the model accuracies are already near 100%)
+
+
+'''
+Summary: (Problem: Predicting the habitat of mushrooms)
+>>> There are 7 habitats in the target variable column (grasses = g, leaves = l, meadows = m, paths = p, urban = u, waste = w).
+>>> The total for each of these habitats is not even. It is important to sample the habitats otherwise the machine learning models will have biases.
+>>> I first tried sampling woods, grasses and paths because these had the most values (sample size - 1000 of each)
+>>> The most accurate base estimator model for the sampled dataset was a support vector machine model (with C = 10 and a linear kernel)
+>>> I applied a bagging classifier to the svm and the ensemble model was able to predict from a choice of three habitats with 81.2% accuracy
+>>> Analysing the confusion matrix showed that the habitat 'paths' was being misclassified
+>>> Dropping paths and reapplying a bagging classifier to a support vector machine model increased the accuracy to 92.3%
+>>> The model was > 90% accurate, but at a cost of only considering two habitats
+>>> I resampled the original data frame to include all 7 habitats (the cost of doing this was a significant data loss)
+>>> With all 7 habitats included, model accuracy was > 70% (applying a bagging classifier to a tuned svm model)
+>>> I then looked at deleting columns from X_test: the best dataframe contained only gill properties, edibility and population to predict habitat
+>>> Applying a bagging classifier to a tuned decision tree on the reduced (and sampled) dataframe gave a > 75% accuracy of determining the habitat
+>>> Slighty greater than 75% is the optimal for predicting across all 7 habitats (assuming the dataframe is fairly sampled)
+'''
+
+
+import sklearn
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier, RadiusNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, BaggingClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.preprocessing import LabelEncoder
+
+import pandas
+from pandas import DataFrame, read_csv, concat
+
+import seaborn
+from seaborn import heatmap
+
+from matplotlib import pyplot as plt
+
+df = read_csv("mushrooms.csv")
+df
+
+
+df.isnull().sum()                                   # No null values
+  
+df.habitat.nunique()                                # 7 values in target column
+                                                    # Habitat: grasses = g, leaves = l, meadows = m, paths = p, urban = u, waste = w, woods = d
+                                      
+print(df["habitat"].value_counts())                 # Target variable is very uneven - drop down to just d, g and p (categories with a good amount of data) 
+
+df2 = df[df.habitat != "l"]
+
+df3 = df2[df2.habitat != "u"]
+
+df4 = df3[df3.habitat != "m"]
+
+df5 = df4[df4.habitat != "w"]
+
+print(df5["habitat"].value_counts())                # d, g and p are uneven - sample 1000 of each
+
+woods = df5[df5["habitat"] == "d"]
+grasses = df5[df5["habitat"] == "g"] 
+paths = df5[df5["habitat"] == "p"] 
+
+woods_sample = woods.sample(n = 1000)
+grasses_sample = grasses.sample(n = 1000)
+paths_sample = paths.sample(n = 1000)
+
+df6 = concat([woods_sample, grasses_sample, paths_sample])              
+
+df6 = df6.reset_index(drop = True)
+
+print(df6["habitat"].value_counts())                           # d, g and p - 1000 of each
+
+df6
+
+df7 = df6.apply(LabelEncoder().fit_transform)                  # d = 0, g = 1, p = 2
+df7
+
+X = df7.drop("habitat", axis = 1)      
+y = df7["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+
+# Ml models
+
+# Decision tree
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+accuracy_score(y_test, DTC.predict(X_test))                                   # 62.2% (1d.p.) accurate with default Decision Tree (changes when code reran)
+
+parameters = {"max_depth": list(range(1, 21)), 
+              "min_samples_leaf": list(range(1, 11)),
+              "min_samples_split": list(range(2, 11))}
+              
+DTC_model = GridSearchCV(DTC, parameters, cv = 3)
+
+DTC_model.fit(X_test, y_test)                                                 # This takes some time
+
+cvresults = DataFrame(DTC_model.cv_results_)
+cvresults
+
+cvresults_compact = cvresults[["param_max_depth", 
+                               "param_min_samples_leaf",
+                               "param_min_samples_split",
+                               "mean_test_score",
+                               "std_test_score",
+                               "rank_test_score"]]
+
+cvresults_compact
+
+for i in cvresults_compact.rank_test_score:
+    if i == 1:
+        print(i)                                                                                               # Three with a rank of 1
+
+rank1 = cvresults_compact[cvresults_compact["rank_test_score"] == 1]
+rank1                                                                                                          # Rank 1 for indexes 365, 370 and 371
+ 
+DTC2 = DecisionTreeClassifier(max_depth = 5, min_samples_leaf = 1, min_samples_split = 7)       
+DTC2.fit(X_train, y_train)
+accuracy_score(y_test, DTC2.predict(X_test))                                                                   # 80.7% (1d.p.) accurate with this Decision Tree
+
+
+# Support Vector Machine
+
+svm = SVC()
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))                                                                    # 80.5% (1d.p.) accurate with default svm (very good) 
+
+svm
+
+parameters = {"C": [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000], "kernel": ["linear", "rbf"]}
+
+svm_model = GridSearchCV(svm, parameters, cv = 3)
+
+svm_model.fit(X_test, y_test)         
+
+cvresults = DataFrame(svm_model.cv_results_)
+cvresults                                                                                                      # Optimality at C = 10 and a linear kernel
+
+svm2 = SVC(C = 10, kernel = "linear")
+svm2.fit(X_train, y_train)
+accuracy_score(y_test, svm2.predict(X_test))                                                                   # 81.2% (1d.p.) accurate with this svm (highest so far) 
+
+
+# KNN
+
+KNN = KNeighborsClassifier()
+KNN.fit(X_train, y_train)
+accuracy_score(y_test, KNN.predict(X_test))                                                                    # 72.3% (1d.p.) accurate with default KNN
+
+for k in range(1, 21):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 5)
+    print(cross_validation_score.mean())   
+
+# Optimal value of k is 5 (which is the default KNN)
+
+
+# RNC (Radius Neighbors Classifier)
+
+RNC = RadiusNeighborsClassifier()
+
+parameters = {"radius": list(range(6, 101))}                                   # Radius has to be at least 6 units to pick any points up
+
+RNC_model = GridSearchCV(RNC, parameters, cv = 3)
+
+RNC_model.fit(X_test, y_test)                                                  # This takes some time
+
+cvresults = DataFrame(RNC_model.cv_results_)
+cvresults                                              
+
+for i in cvresults.rank_test_score:
+    if i == 1:
+        print(i)                                                               # Only one value with rank one - radius = 6 units
+
+RNC2 = RadiusNeighborsClassifier(radius = 6)
+RNC2.fit(X_train, y_train)
+accuracy_score(y_test, RNC2.predict(X_test))                                   # 69.8% (1d.p.) accurate
+
+RNC2.score(X_test, y_test)                                                     # Same result, different syntax
+
+
+# Naive Bayes classifier
+
+GNB = GaussianNB()
+GNB.fit(X_train, y_train)
+accuracy_score(y_test, GNB.predict(X_test))                                    # 51% accurate with GaussianNB
+
+
+# Random forest classifier
+
+RFC = RandomForestClassifier(random_state = 42)       
+RFC.fit(X_train, y_train)
+accuracy_score(y_test, RFC.predict(X_test))                                    # 66.5% (1d.p.) accurate with default Random Forest
+
+parameters = {"max_depth": list(range(1, 21)),                                 # I would like to test other parameters here, but this takes hours to compute
+              "n_estimators": list(range(50, 350, 50))}
+
+RFC_model = GridSearchCV(RFC, parameters, cv = 3)
+
+RFC_model.fit(X_test, y_test)                                                  # This takes some time
+
+cvresults = DataFrame(RFC_model.cv_results_)
+cvresults
+
+for i in cvresults.rank_test_score:
+    if i == 1:
+        print(i)                                                                                      # Two with a rank of 1
+
+rank1 = cvresults[cvresults["rank_test_score"] == 1]
+rank1                                                                                                 # Rank 1 for indexes 25 and 28 - max depth = 5 and trees = 100 or 250
+
+RFC2 = RandomForestClassifier(max_depth = 5, n_estimators = 100, random_state = 42) 
+RFC3 = RandomForestClassifier(max_depth = 5, n_estimators = 250, random_state = 42)       
+
+RFC2.fit(X_train, y_train)
+RFC3.fit(X_train, y_train)
+
+print(accuracy_score(y_test, RFC2.predict(X_test)))                                                   # 79.5% accurate with Random Forest (100 trees, max depth = 5)
+print(accuracy_score(y_test, RFC3.predict(X_test)))                                                   # 79.5% accurate with Random Forest (250 trees, max depth = 5)
+
+
+# Extra trees classifier (note: has to be used as part of an ensemble method)
+
+ETC = ExtraTreesClassifier(random_state = 42)
+
+ETC.fit(X_train, y_train)
+
+BC = BaggingClassifier(ETC)
+
+BC.fit(X_train, y_train)
+
+print(accuracy_score(y_test, BC.predict(X_test)))                                                     # 66.5% accurate with bagging on an extra trees classifier
+
+
+# The most accurate from the base learning algorithms is the slightly modified support vector machine ---> svm2 = SVC(C = 10, kernel = "linear")
+# Use this and DTC2 as the base estimators for the ensemble methods
+
+
+# Bagging
+
+BC = BaggingClassifier(svm2)
+BC.fit(X_train, y_train)
+print(accuracy_score(y_test, BC.predict(X_test)))                                                # 81.2% accurate with bagging on svm2 (changes when code reran)
+
+BC2 = BaggingClassifier(DTC2)
+BC2.fit(X_train, y_train)
+print(accuracy_score(y_test, BC2.predict(X_test)))                                               # 80.7% accurate with bagging on DTC2 
+
+
+# Adaptive boosting (Adaboost)
+
+ABC = AdaBoostClassifier(algorithm = 'SAMME', base_estimator = svm2, random_state = 42)          # Use algorithm = 'SAMME' for svm 
+ABC.fit(X_train, y_train)
+accuracy_score(y_test, ABC.predict(X_test))                                                      # 80% accurate with adaptive boosting on svm2
+
+ABC2 = AdaBoostClassifier(base_estimator = DTC2, random_state = 42)          
+ABC2.fit(X_train, y_train)
+accuracy_score(y_test, ABC2.predict(X_test))                                                     # 80.7% accurate with adaptive boosting on DTC2    
+
+
+# Gradient Boosting
+
+GBC = GradientBoostingClassifier()                             
+GBC.fit(X_train, y_train)
+GBC.score(X_test, y_test)                                      
+accuracy_score(y_test, GBC.predict(X_test))                                                      # 79.8% (1d.p.) with untuned gradient boost   
+
+
+# Best model is bagging on svm2 (named BC)
+# Able to predict from a choice of three habitats with 81.2% accuracy
+
+BC
+
+cm = confusion_matrix(y_test, BC.predict(X_test))                                                # d and g are predicted perfectly. Problems are with p.
+cm
+
+df8 = df6[df6["habitat"] != "p"]                                                                 # drop p and retest
+df8 = df8.reset_index(drop = True)
+df8
+
+df9 = df8.apply(LabelEncoder().fit_transform)                                                    # d = 0, g = 1
+df9
+
+X = df9.drop("habitat", axis = 1)      
+y = df9["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+svm2 = SVC(C = 10, kernel = "linear")
+svm2.fit(X_train, y_train)
+accuracy_score(y_test, svm2.predict(X_test))                                                    # 92.3% (1d.p.) accurate with this svm
+
+BC = BaggingClassifier(svm2)
+BC.fit(X_train, y_train)
+print(accuracy_score(y_test, BC.predict(X_test)))                                               # 92.3% accurate with bagging
+
+cm = confusion_matrix(y_test, BC.predict(X_test))                                               # d predicted perfectly.
+cm
+
+# If we only consider two habitats then the model can reach 92.3% accuracy
+
+
+# Next, if the problem insists that all 7 habitats are considered
+
+df
+
+print(df["habitat"].value_counts())                           # Reminder that target variable is uneven - sample 150 of each habitat
+
+grasses = df[df["habitat"] == "g"]                            # The cost of this sampling is a significant data loss
+leaves = df[df["habitat"] == "l"] 
+meadows = df[df["habitat"] == "m"] 
+paths = df[df["habitat"] == "p"] 
+urban = df[df["habitat"] == "u"] 
+waste = df[df["habitat"] == "w"]
+woods = df[df["habitat"] == "d"]
+
+grasses_sample = grasses.sample(n = 150)
+leaves_sample = leaves.sample(n = 150)
+meadows_sample = meadows.sample(n = 150)
+paths_sample = paths.sample(n = 150)
+urban_sample = urban.sample(n = 150)
+waste_sample = waste.sample(n = 150)
+woods_sample = woods.sample(n = 150)
+
+df10 = concat([grasses_sample,
+              leaves_sample,
+              meadows_sample,
+              paths_sample,
+              urban_sample,
+              waste_sample,
+              woods_sample])
+
+df10 = df10.reset_index(drop = True)
+
+df10                         
+
+df11 = df10.apply(LabelEncoder().fit_transform)    
+df11
+
+print(df10.habitat.unique())                                                                                        # ['g' 'l' 'm' 'p' 'u' 'w' 'd']
+print(df11.habitat.unique())                                                                                        # [1 2 3 4 5 6 0] (e.g. g = 1, l = 2 etc)
+   
+
+X = df11.drop("habitat", axis = 1)      
+y = df11["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+accuracy_score(y_test, DTC.predict(X_test))                                                                        # Default decision tree = 70%
+
+svm = SVC()
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))                                                                        # Default svm once again better than decision tree (72.3% 1d.p.)  
+
+parameters = {"C": [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000], "kernel": ["linear", "rbf"]}
+svm_model = GridSearchCV(svm, parameters, cv = 3)
+svm_model.fit(X_test, y_test)         
+
+cvresults = DataFrame(svm_model.cv_results_)
+cvresults                                                                                                          # Optimality C = 100, kernel = rbf
+
+svm3 = SVC(C = 100, kernel = "rbf")
+svm3.fit(X_train, y_train)
+accuracy_score(y_test, svm3.predict(X_test))                                                                       # New svm with tuned parameters - acuuracy increased to 73.8% (1d.p.) 
+
+
+# Apply ensemble methods to svm3 and compare accuracies
+
+BC = BaggingClassifier(svm3)
+BC.fit(X_train, y_train)
+print(accuracy_score(y_test, BC.predict(X_test))) 
+
+ABC = AdaBoostClassifier(algorithm = 'SAMME', base_estimator = svm3, random_state = 42)          
+ABC.fit(X_train, y_train)
+print(accuracy_score(y_test, ABC.predict(X_test)))
+
+# Best ensemble algorithm is bagging with svm3
+
+cm = confusion_matrix(y_test, BC.predict(X_test))
+
+land_type = ['g', 'l', 'm', 'p', 'u', 'w', 'd']
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(land_type)
+y_label = axes.set_yticklabels(land_type)
+
+heatmap(cm, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 4,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()                                           # m (meadows) and u (urban) are badly misclassified, d (woods) is perfect
+
+# Conclusion: if one insists on including all 7 habitats then sampling is necessary
+# Best model accuracy for predicting across all 7 habitats is a bagged support vector machine model with a high c value (acc.> 70%)
+
+
+# Look at removing some of the columns (e.g. reduce X_test) - with all 7 habitats
+
+df10
+
+df12 = df10[["cap-shape",                                    # Try looking at just cap properties
+             "cap-surface",
+             "cap-color",
+             "habitat"]]
+
+df12
+
+df13 = df12.apply(LabelEncoder().fit_transform)            
+df13
+
+X = df13.drop("habitat", axis = 1)      
+y = df13["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC.predict(X_test)))
+
+svm = SVC()
+svm.fit(X_train, y_train)
+print(accuracy_score(y_test, svm.predict(X_test)))            # Models now <50% accurate
+
+
+df14 = df10[["class", "population", "habitat"]]               # Try with edibility and population
+df14
+
+df15 = df14.apply(LabelEncoder().fit_transform)            
+df15
+
+X = df15.drop("habitat", axis = 1)      
+y = df15["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC.predict(X_test)))
+
+svm = SVC()
+svm.fit(X_train, y_train)
+print(accuracy_score(y_test, svm.predict(X_test)))                                                                     # Models now around 55% accurate
+
+df16 = df10[["class", "population", "gill-attachment", "gill-spacing", "gill-size", "gill-color", "habitat"]]          # Try with gill properties, edibility and population
+df16                                                        
+
+df17 = df16.apply(LabelEncoder().fit_transform)            
+df17
+
+X = df17.drop("habitat", axis = 1)      
+y = df17["habitat"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()                                                                        
+DTC.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC.predict(X_test)))                                                    # 75.7% accurate
+
+svm = SVC()
+svm.fit(X_train, y_train)
+print(accuracy_score(y_test, svm.predict(X_test)))                                                    # 69.5% accurate
+
+
+# Aim to improve decision tree by tuning parameters then apply ensemble methods
+
+parameters = {"max_depth": list(range(1, 11)), 
+              "min_samples_leaf": list(range(1, 11)),
+              "min_samples_split": list(range(2, 11))}
+
+DTC_model = GridSearchCV(DTC, parameters, cv = 5)
+
+DTC_model.fit(X_test, y_test)         
+
+cvresults = DataFrame(DTC_model.cv_results_)
+cvresults
+
+rank_one = cvresults[cvresults.rank_test_score == 1]                                                  # 5 optimal options
+rank_one
+
+DTC1 = DecisionTreeClassifier(max_depth = 5, min_samples_leaf = 1, min_samples_split = 10)                                
+DTC1.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC1.predict(X_test)))
+
+DTC2 = DecisionTreeClassifier(max_depth = 7, min_samples_leaf = 2, min_samples_split = 7)                                
+DTC2.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC2.predict(X_test)))
+
+DTC3 = DecisionTreeClassifier(max_depth = 8, min_samples_leaf = 2, min_samples_split = 7)                                
+DTC3.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC3.predict(X_test)))
+
+DTC4 = DecisionTreeClassifier(max_depth = 9, min_samples_leaf = 2, min_samples_split = 7)                                
+DTC4.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC4.predict(X_test)))
+
+DTC5 = DecisionTreeClassifier(max_depth = 10, min_samples_leaf = 2, min_samples_split = 7)                                
+DTC5.fit(X_train, y_train)
+print(accuracy_score(y_test, DTC5.predict(X_test)))                                                    # Use DTC5
+
+
+BC = BaggingClassifier(DTC5)
+BC.fit(X_train, y_train)
+print(accuracy_score(y_test, BC.predict(X_test)))  
+
+ABC = AdaBoostClassifier(base_estimator = DTC5, random_state = 42)          
+ABC.fit(X_train, y_train)
+accuracy_score(y_test, ABC.predict(X_test))                          
+
+
+# Compare confusion matrices of ensemble models
+
+cm = confusion_matrix(y_test, BC.predict(X_test))
+
+land_type = ['g', 'l', 'm', 'p', 'u', 'w', 'd']
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(land_type)
+y_label = axes.set_yticklabels(land_type)
+
+heatmap(cm, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 4,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()    
+
+cm2 = confusion_matrix(y_test, ABC.predict(X_test))
+
+land_type = ['g', 'l', 'm', 'p', 'u', 'w', 'd']
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+
+x_label = axes.set_xticklabels(land_type)
+y_label = axes.set_yticklabels(land_type)
+
+heatmap(cm2, 
+        cmap = "YlOrBr",
+        annot = True,
+        linewidths = 4,
+        linecolor = 'b',
+        square = True,
+        xticklabels = x_label, 
+        yticklabels = y_label)
+
+plt.xlabel("Model Predictions")
+plt.ylabel("Actual Values")
+plt.title("Confusion Matrix")
+
+plt.show()    
+
+# Model accuracies are largely the same - bagging was slightly more effective
+
+
+# Last step - try a few predictions (randomly chosen)
+
+BC.predict([[0, 0, 1, 0, 0, 2]])         
+
+# Mushroom to be classified: An edible mushroom with an abundant population and the gill properties: free gill attachment, close gill spacing, broad gill size and grey gills
+# Prediction: This mushroom grows in grassy habitats (= 1)
+
+BC.predict([[1, 1, 1, 1, 1, 3]])         
+# Mushroom to be classified: A poisonous mushroom with a clustered population and the gill properties: free gill attachment, crowded gill spacing, narrow gill size and chocolate coloured gills
+# Prediction: This mushroom grows in waste habitats (= 6)
+
+# Final remarks
+# The dataset is designed to predict if a mushroom is edible or not, however predictions about other mushroom properties can be made with reasonable accuracy              
