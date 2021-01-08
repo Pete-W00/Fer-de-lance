@@ -1,0 +1,67 @@
+# Penguins dataset (seaborn)
+# ROC curve for binary target variable
+
+import pandas
+from pandas import concat
+from pandas import DataFrame
+
+import sklearn
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix, plot_roc_curve
+from sklearn.tree import DecisionTreeClassifier
+
+from matplotlib import pyplot as plt
+
+import seaborn as sns
+
+df = sns.load_dataset("penguins")
+df
+
+
+df.isnull().sum()                                       # Null values exist
+df.dropna(inplace = True)
+df.isnull().sum()                                       # Clean of null values
+
+df = df.reset_index(drop = True)
+df
+
+df2 = df[["island", "sex", "species"]]                  # Just categorical variables 
+df2
+
+ADE = df2[df2["species"] == "Adelie"]                      
+GEN = df2[df2["species"] == "Gentoo"]
+
+ADE_sample = ADE.sample(n = 100)                        # Sample 100 of each penguin
+GEN_sample = GEN.sample(n = 100)
+
+df3 = concat([ADE_sample, GEN_sample])
+df3 = df3.reset_index(drop = True)
+df3                     
+
+df4 = df3.apply(LabelEncoder().fit_transform)          # Species: 0 = Adelie, 1 = Gentoo
+df4                                                    # Island: 0 = Biscoe, 1 = Dream, 2 = Torgersen
+                                                       # Sex: 0 = Female, 1 = Male
+
+
+
+X = df4.drop("species", axis = 1)      
+y = df4["species"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+DTC = DecisionTreeClassifier()       
+DTC.fit(X_train, y_train)
+accuracy_score(y_test, DTC.predict(X_test))                  
+
+cm = confusion_matrix(y_test, DTC.predict(X_test))
+cm 
+
+
+plot_roc_curve(DTC, X_test, y_test, linewidth = 4)
+
+plt.xlabel("False Positive Rate", fontsize = 15)
+plt.ylabel("True Positive Rate", fontsize = 15)
+plt.grid(True)
+plt.title("ROC curve", fontsize = 20)
+plt.show() 
