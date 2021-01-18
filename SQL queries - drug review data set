@@ -1,0 +1,333 @@
+# UCI drug dataset (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - Arpit Kumar/UCI
+# Original source - https://www.kaggle.com/arpikr/uci-drug?select=UCIdrug_train.csv
+# https://archive.ics.uci.edu/ml/datasets/Drug+Review+Dataset+%28Drugs.com%29
+
+# There are two files - the training data (79.15 MB) and the testing data (26.36 MB)
+# Due to slow import speeds into SQL, I am using the first 5000 entries from the testing data
+
+# Important - cleaning - in the csv file in Excel, find and replace all the double quotes (" ") in the review column - otherwise 'handling error'
+
+CREATE DATABASE drug;
+USE drug;                                                              # Refresh schemas and use import wizard to put csv into SQL (import takes about 2-3hrs per 5000 entries)
+
+SELECT*FROM ucidrug_test_5000; 
+
+ALTER TABLE ucidrug_test_5000 RENAME COLUMN `condition` TO cond;       # This error was tricky to fix - condition is a column name, but also an actual command in SQL - use `` around the word condition when renaming the column 
+
+SELECT*FROM ucidrug_test_5000; 
+
+
+# Querying - these are just example queries using different keyword commands and operators
+
+# What are all the different types of drugs that treat depression (from this sample)?
+SELECT drugName, cond
+FROM ucidrug_test_5000
+WHERE cond = "Depression"                                                                # This line didn't like a double equals sign - changed to single
+GROUP By drugName
+ORDER BY drugName ASC;
+# There are 56 different drugs just for this sample! 
+
+
+# What are the depression drugs that are rated as 10?       # Note that rating is 'patient rating'
+SELECT drugName, cond, rating
+FROM ucidrug_test_5000
+WHERE cond = "Depression"
+AND rating = 10
+GROUP By drugName                                              
+ORDER BY drugName ASC;
+# Of the 56 possible depression drugs, 39 have received a rating of 10 by at least one patient
+
+
+# Filter by negative reviews. Which drugs do these reviews relate to?
+# It's not possible to filter as such, but we can use the LIKE operator to look out for keywords like "horrible"
+SELECT drugName, review
+FROM ucidrug_test_5000
+WHERE review LIKE "%horrible%"         # Percentages on both sides of the keyword - otherwise only filters if first word in review
+OR review LIKE "%terrible%"
+OR review LIKE "%awful%";
+# This would stick require a lot of work to decipher the reviews. 
+# Query orders by keyword requested with the LIKE command.
+# Note that words like 'lawful' would be returned because 'awful' is contained in 'lawful'
+
+
+# First five drugs in sample with a rating of 1?
+SELECT drugName, rating 
+FROM ucidrug_test_5000
+WHERE rating = 1
+LIMIT 5;
+# For this sample - Paroxetine, Belviq, Trazodone, Arripiprazole, Cyclosporine
+
+
+# Reviews of Paroxetine?
+SELECT drugName, review 
+FROM ucidrug_test_5000
+WHERE drugName = "Paroxetine";
+# Mixed reviews here - difficult to get a summary opinion
+
+
+# Look at values 11-20 from this sample?
+SELECT*FROM ucidrug_test_5000 
+LIMIT 10 
+OFFSET 10;
+# This is an unusual query for SQL - especially since this data is not in any particular order 
+
+
+# Look at distinct drug names for values 11-20 when ordered by drugName? 
+SELECT DISTINCT drugName
+FROM ucidrug_test_5000
+ORDER BY drugName ASC
+LIMIT 10 
+OFFSET 10;  
+# This gives a more meaningful answer, however this is a strange way to use SQL. 
+
+
+# Usefulness counts that are at least 100?         # Note, usefulCount = number of users who found review useful
+SELECT drugName, usefulCount
+FROM ucidrug_test_5000
+WHERE usefulCount >= 100                           # Note the not less than operator !< doesn't work for this SQL version
+ORDER BY usefulCount DESC; 
+
+
+# There was a review for Sertraline that 949 users found useful (next nearest 680) - why was the review so useful?
+# The answer is subjective of course, but here we go:
+SELECT*FROM ucidrug_test_5000 
+WHERE usefulCount = 949;
+# This particular review is brief but heartfelt - someone who has really benefit from the drug Sertraline.
+
+
+# Can Sertraline treat other conditions, apart from depression?
+SELECT DISTINCT drugName, cond
+FROM ucidrug_test_5000
+WHERE drugName = "Sertraline"
+AND cond <> "Depression";        # <> is not equal operator
+# Yes it can treat another 7 conditions - very useful drug!
+# Note that this syntax also works, use != instead of <> for not equal operator:
+SELECT DISTINCT drugName, cond
+FROM ucidrug_test_5000
+WHERE drugName = "Sertraline"
+AND cond != "Depression";  
+# So this SQL version supports !=, but not !> or !<
+
+
+# Drugs rated lowly that have a useful review?
+SELECT drugName, cond, review, rating, usefulCount
+FROM ucidrug_test_5000
+WHERE rating <= 3                 # Interpret lowly as <= 3
+AND usefulCount >= 150;           # Initially used 100, but too many entries returned
+# Two reviews where the drug is rated lowly by the patients and the review is helpful to others 
+
+
+# Say we wanted to see reviews between January 2012 and December 2012 (inclusive):
+# Firstly rename date column as 'date' appears to be a command
+ALTER TABLE ucidrug_test_5000 RENAME COLUMN `date` TO theDate;       
+# I tried to use the BETWEEN operator, however the dat format contains strings - very unhelpful - e.g. cannot use WHERE theDate BETWEEN '01-Jan-12' AND '31-Dec-12';
+# Best solution I could think of was to use the LIKE operator for each month of 2012 - not elegant, but it works
+SELECT review, theDate
+FROM ucidrug_test_5000
+WHERE theDate LIKE "%Jan-12%"
+OR theDate LIKE "%Feb-12%"
+OR theDate LIKE "%Mar-12%"
+OR theDate LIKE "%Apr-12%"
+OR theDate LIKE "%May-12%"
+OR theDate LIKE "%Jun-12%"
+OR theDate LIKE "%Jul-12%"
+OR theDate LIKE "%Aug-12%"
+OR theDate LIKE "%Sep-12%"
+OR theDate LIKE "%Oct-12%"
+OR theDate LIKE "%Nov-12%"
+OR theDate LIKE "%Dec-12%";
+# This doesn't provide the dates by month order - also using the filter orders the result by days
+# Use case operator to order by months
+SELECT review, theDate
+FROM ucidrug_test_5000
+WHERE theDate LIKE "%Jan-12%"
+OR theDate LIKE "%Feb-12%"
+OR theDate LIKE "%Mar-12%"
+OR theDate LIKE "%Apr-12%"
+OR theDate LIKE "%May-12%"
+OR theDate LIKE "%Jun-12%"
+OR theDate LIKE "%Jul-12%"
+OR theDate LIKE "%Aug-12%"
+OR theDate LIKE "%Sep-12%"
+OR theDate LIKE "%Oct-12%"
+OR theDate LIKE "%Nov-12%"
+OR theDate LIKE "%Dec-12%"
+ORDER BY CASE WHEN theDate LIKE "%Jan-12%" THEN 1
+			  WHEN theDate LIKE "%Feb-12%" THEN 2
+              WHEN theDate LIKE "%Mar-12%" THEN 3
+              WHEN theDate LIKE "%Apr-12%" THEN 4
+              WHEN theDate LIKE "%May-12%" THEN 5
+              WHEN theDate LIKE "%Jun-12%" THEN 6
+              WHEN theDate LIKE "%Jul-12%" THEN 7
+              WHEN theDate LIKE "%Aug-12%" THEN 8
+              WHEN theDate LIKE "%Sep-12%" THEN 9
+              WHEN theDate LIKE "%Oct-12%" THEN 10
+              WHEN theDate LIKE "%Nov-12%" THEN 11
+              WHEN theDate LIKE "%Dec-12%" THEN 12
+END;
+# This sorts reviews by month in 2012 - to sort by day as well you would have to make a function or change the date format
+
+
+# Drugs with an average rating?
+# Interpret average as 4-6
+SELECT*FROM ucidrug_test_5000
+WHERE rating BETWEEN 4 AND 6
+ORDER BY rating DESC;  
+
+
+# Drugs with an above average rating?
+# Can interpret 'above average rating' as rating > 5 or rating > mean(rating)
+# Case one: rating > 5
+SELECT*FROM ucidrug_test_5000
+WHERE rating > 5                                 # 3,493 ratings > 5 from this sample 
+ORDER BY rating DESC;
+# Case two: rating > mean(rating)
+# First find out what the mean rating is:
+SELECT AVG(rating) AS mean_rating                # Mean is AVG
+FROM ucidrug_test_5000;                          # Mean rating is high - 6.9736 - this is why interpretation is important                 
+# So we want values greater that 6.9736 - there are no decimal ratings, so we want ratings >= 7
+SELECT*FROM ucidrug_test_5000
+WHERE rating >= 7
+ORDER BY rating DESC;                            
+# 3,313 ratings >= 7 from this sample
+
+
+# Drugs related to being overweight?
+SELECT drugName, cond
+FROM ucidrug_test_5000
+WHERE cond IN ("Weight Loss", "Obesity")
+GROUP BY drugName
+ORDER BY drugName ASC;
+# 18 drugs related to weight loss or obesity
+
+
+# Drugs related to being overweight where the rating and usefulCount are high?
+SELECT drugName, cond, review, rating, usefulCount
+FROM ucidrug_test_5000
+WHERE cond IN ("Weight Loss", "Obesity")
+AND rating = 10 
+AND usefulCount >= 200;
+# Two drugs meet this criteria - Adipex-P and Lorcaserin (NB Lorcaserin and Belviq are the same thing)
+
+
+# Select Acne and ADHD conditions?
+# There are at least two ways of doing this:
+# Method one - simple logical operator - OR
+SELECT cond
+FROM ucidrug_test_5000
+WHERE cond = "Acne"
+OR cond = "ADHD";
+# Method two - using LIKE operator
+SELECT cond
+FROM ucidrug_test_5000
+WHERE cond LIKE "A___";
+# There is a chance that this might give another conditions (e.g. "Aids" fits), but I checked the data set beforehand
+
+
+# How many blank entries in the condition column (I didn't notice this when I uploaded the data - normally I would have cleaned this)
+SELECT*FROM ucidrug_test_5000
+WHERE cond = ''; 
+# 25 blank entries where no condition is specified
+# Note that this command fills the blank values - unhelpfully actually: 
+SELECT*FROM ucidrug_test_5000
+WHERE cond != ''; 
+# Best to clean the data before putting into SQL if worried about null values
+
+
+# What is the main condition?
+SELECT cond, COUNT(cond) AS "Condition totals"
+FROM ucidrug_test_5000
+GROUP BY cond
+ORDER BY COUNT(cond) DESC;
+# Condition is mainly birth control for this sample
+
+
+# What is the main drug used? (very similar to above query)
+SELECT drugName, COUNT(drugName) AS "Drug totals"
+FROM ucidrug_test_5000
+GROUP BY drugName
+ORDER BY COUNT(drugName) DESC;
+# Main drug is Levonorgestrel for this sample
+
+
+# Ratings comparison for Gabapentin and Mirena (Fair because they have 37 row entries each - previous query)
+# Gabapentin:
+SELECT SUM(rating)
+FROM ucidrug_test_5000
+WHERE drugName = "Gabapentin";         # 265
+# Mirena:
+SELECT SUM(rating)
+FROM ucidrug_test_5000
+WHERE drugName = "Mirena";             # 239
+# So from this sample, Gabapentin is rated slightly higher than Mirena
+# It might be more useful to look at the means instead:
+# Gabapentin:
+SELECT AVG(rating)
+FROM ucidrug_test_5000
+WHERE drugName = "Gabapentin";         # 7.1622
+# Mirena:
+SELECT AVG(rating)
+FROM ucidrug_test_5000
+WHERE drugName = "Mirena";             # 6.4595
+# And of course we can quickly look at the maximum and minimum ratings for both drugs
+# Gabapentin:
+# Max:
+SELECT MAX(rating) AS MAX
+FROM ucidrug_test_5000
+WHERE drugName = "Gabapentin";         # Max is 10
+# Min:
+SELECT MIN(rating) AS MIN
+FROM ucidrug_test_5000
+WHERE drugName = "Gabapentin";         # Min is 1
+# Mirena:
+# Max:
+SELECT MAX(rating) AS MAX
+FROM ucidrug_test_5000
+WHERE drugName = "Mirena";             # Max is 10
+# Min:
+SELECT MIN(rating) AS MIN
+FROM ucidrug_test_5000
+WHERE drugName = "Mirena";             # Min is 1
+# Rating is 9 for both drugs, so patients have had both positive and negative experiences with both drugs
+
+
+# Number of different drug types in this sample?
+SELECT COUNT(DISTINCT drugName)
+FROM ucidrug_test_5000;                
+# 1,135 different drugs
+
+
+# Number of different conditions?
+SELECT COUNT(DISTINCT cond)
+FROM ucidrug_test_5000;                
+# 366 different conditions
+# So in this sample there are 1,135 drugs treating 366 different conditions
+# E.g. some conditions (like depression) have many different drugs to treat it
+
+
+# 5 random entries
+SELECT*FROM ucidrug_test_5000
+ORDER BY RAND()
+LIMIT 5;
+
+
+# 5 random entries for the condition depression?
+SELECT*FROM ucidrug_test_5000
+WHERE cond = "Depression"
+ORDER BY RAND()
+LIMIT 5;
+
+
+# Drugs that are used by more than 50 people in this sample?
+SELECT drugName, COUNT(drugName) AS "Drug_totals"
+FROM ucidrug_test_5000
+GROUP BY drugName
+HAVING Drug_totals > 50
+ORDER BY COUNT(drugName) DESC;
+# 6 drugs are used by more than 50 people. This query uses 'HAVING'
+
+
+# Will be uploading a project using joins - this data set only uses one table
