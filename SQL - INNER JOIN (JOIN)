@@ -7,7 +7,7 @@
 # table3: poko, my_rating, the_type, common, when_caught, weakness
 
 # table1
-poko_id	   poko	       type
+poko_id	   poko	        type
 1	         Haunter	     Ghost
 2	         Bellsprout	  Grass
 3	         Gengar	      Ghost
