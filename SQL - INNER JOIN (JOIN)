@@ -45,6 +45,12 @@ Ponyta	    5	           Fire	       C	         MidGame	        Water
 Snorlax	   9	           Normal	     R	         MidGame	        None
 Voltorb	   5	           Electric	   C	         EarlyGame	      Rock 
 
+# table 4
+poko                  the_type
+Ghastly               Ghost
+Haunter               Ghost
+Gengar                Ghost
+
 
 
 CREATE DATABASE poko;
@@ -101,4 +107,21 @@ INNER JOIN table3
     ON table2.my_rating = table3.my_rating;
 # This joins poko column from table1 to my_rating and yellow columns in table2 and then common column in table3
 
-# Next upload will be outer joins - I need new tables for this as all the data is common here
+
+# Outer joins
+
+SELECT*FROM table4;
+
+DELETE FROM table4 LIMIT 1;                       # extra row with column names included in import
+								                                          
+SELECT*FROM table1                                
+INNER JOIN table4
+    ON table1.the_type = table4.the_type;
+
+SELECT*FROM table1                                # this works as an outer join - pokemon that are not ghost type are given null values
+LEFT OUTER JOIN table4
+    ON table1.the_type = table4.the_type;
+    
+SELECT*FROM table1                                # same output as inner join
+RIGHT OUTER JOIN table4
+    ON table1.the_type = table4.the_type;
