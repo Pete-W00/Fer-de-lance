@@ -1,4 +1,4 @@
-# SQL - Inner Joins 
+# SQL - Inner Joins and Outer joins
 
 # Fictious data set - a list of pokemon and properties (not necessarily factual, from memory)
 # The actual data is unimportant providing your tables keep the same column names (and the data is the same for same columns, e.g. data in poko is same for both tables):
