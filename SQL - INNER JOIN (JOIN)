@@ -1,0 +1,64 @@
+# SQL - Inner Joins 
+
+# Fictious data set - a list of pokemon and properties
+# The actual data is unimportant providing your tables keep the same column names:
+# table1: poko_id, poko, the_type
+# table2: poko_id, poko, my_rating, yellow
+# table3: poko, my_rating, the_type, common, when_caught, weakness
+
+
+CREATE DATABASE poko;
+USE poko;                                                  # Refresh schemas and use import wizard to put csv files into SQL
+
+
+SELECT*FROM table1;
+ 
+SELECT*FROM table2;
+
+SELECT*FROM table3;
+
+
+SELECT*FROM table1
+INNER JOIN table2
+    ON table1.poko = table2.poko;                          # Joins the two tables
+
+ALTER TABLE table1 RENAME COLUMN `type` TO the_type;       # type is a built in SQL command so not a good column name
+
+SELECT table1.poko, the_type, my_rating                    # my_rating is data from table2
+FROM table1
+INNER JOIN table2 
+    ON table1.poko = table2.poko;
+    
+SELECT table1.poko, the_type, yellow                       # yellow is data from table2
+FROM table1
+INNER JOIN table2 
+    ON table1.poko = table2.poko;    
+    
+SELECT*FROM table3                                         # Joins with common column my_rating
+INNER JOIN table2 
+    ON table3.my_rating = table2.my_rating;
+    
+SELECT table3.my_rating, weakness, yellow                  # my_rating is common column, weakness is from table3 and yellow is from table2
+FROM table3
+INNER JOIN table2 
+    ON table3.my_rating = table2.my_rating;    
+    
+# Different syntax for inner join (join)
+SELECT table2.my_rating, yellow, when_caught               # my_rating is common column, yellow is table2 and when_caught is table3 
+FROM table2, table3
+WHERE table2.my_rating = table3.my_rating; 
+    
+# Join for all values in tables 1 and 2 (common data column is poko)
+SELECT*FROM table1, table2
+WHERE table1.poko = table2.poko;
+
+# Joining three tables
+SELECT table1.poko, table2.my_rating, table2.yellow, table3.common                   # Might be easier to always use the syntax tableName.columnValue so you know where the data is coming from
+FROM table1
+INNER JOIN table2
+    ON table1.poko = table2.poko
+INNER JOIN table3
+    ON table2.my_rating = table3.my_rating;
+# This joins poko column from table1 to my_rating and yellow columns in table2 and then common column in table3
+
+# Next upload will be outer joins - I need new tables for this as all the data is common here
