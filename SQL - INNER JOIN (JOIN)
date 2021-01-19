@@ -1,10 +1,50 @@
 # SQL - Inner Joins 
 
-# Fictious data set - a list of pokemon and properties
+# Fictious data set - a list of pokemon and properties (not necessarily factual, from memory)
 # The actual data is unimportant providing your tables keep the same column names (and the data is the same for same columns, e.g. data in poko is same for both tables):
 # table1: poko_id, poko, the_type
 # table2: poko_id, poko, my_rating, yellow
 # table3: poko, my_rating, the_type, common, when_caught, weakness
+
+# table1
+poko_id	   poko	       type
+1	         Haunter	     Ghost
+2	         Bellsprout	  Grass
+3	         Gengar	      Ghost
+4	         Onix	        Rock
+5	         Geodude	     Rock
+6	         Mew	         Psychic
+7	         Squirtle	    Water
+8	         Ponyta	      Fire
+9	         Snorlax	     Normal
+10	        Voltorb	     Electric
+
+# table2
+poko_id	   poko	       my_rating	     yellow
+1	         Haunter	    6	             Y
+2	         Bellsprout	 4             	Y
+3	         Gengar	     9	             N
+4	         Onix	       6	             Y
+5	         Geodude	    5	             Y
+6	         Mew	        10	            N
+7	         Squirtle	   7	             Y
+8	         Ponyta	     5	             Y
+9	         Snorlax	    9	             Y
+10	        Voltorb	    5	             Y
+
+# table3
+poko	      my_rating	   the_type	   common	    when_caught	    weakness
+Haunter	   6	           Ghost	      U	         MidGame	        Psychic
+Bellsprout	4	           Grass	      C	         EarlyGame	      Psychic
+Gengar	    9	           Ghost	      R	         Never	          Psychic
+Onix	      6	           Rock	       C	         EarlyGame	      Water
+Geodude	   5	           Rock	       C	         EarlyGame	      Water
+Mew	       10	          Psychic	    R	         Never	          None
+Squirtle	  7	           Water	      R	         Never	          Electric
+Ponyta	    5	           Fire	       C	         MidGame	        Water
+Snorlax	   9	           Normal	     R	         MidGame	        None
+Voltorb	   5	           Electric	   C	         EarlyGame	      Rock 
+
 
 
 CREATE DATABASE poko;
