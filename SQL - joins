@@ -1,0 +1,98 @@
+# SQL - joins
+
+# STEP ONE - invent dataset in Python
+# Teachers and the subjects they teach - invented dataset
+
+# Create the data sets - code is Python 
+
+import pandas
+from pandas import DataFrame
+
+data = {"subjectID": [1, 2, 3, 4, 5, 6],
+        "subject": ["Maths", "English", "Science", "French", "Italian", "ICT"],                  
+        "theType": ["Core", "Core", "Core", "Optional", "Optional", "Optional"]}     
+
+subjects = DataFrame(data)
+subjects
+
+data2 = {"teacher": ["Dave", "Dave", "Dave", "Jack", "Jack", "Sara", "Sara", "Fiona", "Simon", "Rebecca"],
+        "subjectsTaught": [1, 2, 6, 4, 5, 2, 5, 6, 2, 0]}
+
+teaching = DataFrame(data2)
+teaching
+
+subjects.to_excel('subjects.xlsx', sheet_name = 'data', index = False) 
+teaching.to_excel('teaching.xlsx', sheet_name = 'data', index = False)
+
+# save excel files to csv to allow SQL to read them
+
+
+
+# STEP TWO - make database and insert tables - code is now SQL
+
+CREATE DATABASE school;
+
+USE school; 
+
+# use import wizard to put csvs into SQL
+# Now check the import was Ok
+
+SELECT*FROM subjects;
+ALTER TABLE subjects RENAME COLUMN `subject` TO theSubject;                 # Subject is a command in SQL, safest to rename it now to avoid confusion            
+
+SELECT*FROM teaching;
+
+
+# STEP THREE - joins 
+
+# Tables:
+# subjects --> columns: subjectID, subject, theType
+# teaching --> columns: teacher, subjectsTaught
+# Tables have common data, but columns are not identical - therefore suitable for joins
+
+# Check that everything is selected properly
+          
+SELECT subjectID, theSubject, theType                                       # Unknown column in field list error - subjectID - solution to this to actually right click on the desired column in the table and copy the name from there
+FROM subjects;
+
+SELECT subjectID, theSubject, theType                                       # Copied field name
+FROM subjects;
+
+SELECT teacher, subjectsTaught                         
+FROM teaching;
+
+# Ok, so can select from the tables fine.
+
+
+# Joins
+
+# Inner join
+SELECT*FROM teaching
+INNER JOIN subjects
+    ON teaching.subjectsTaught = subjects.subjectID;                         # Note that Rebecca was left off because this was not common data - need outer join to include Rebecca
+
+# Different syntax for inner join (join)
+SELECT teacher, subjectsTaught, subjectID, theSubject, theType             
+FROM teaching, subjects
+WHERE teaching.subjectsTaught = subjects.subjectID; 
+
+# Left outer join
+SELECT*FROM teaching                                
+LEFT OUTER JOIN subjects                                                     # Left table (teaching) is fully included (e.g. left outer join)                 
+    ON teaching.subjectsTaught = subjects.subjectID;                         # Rebecca is included but of course all the values in the subjects table are null for Rebecca
+
+# Right outer join
+SELECT*FROM teaching                                                         # This time right table (subjects) is fully included
+RIGHT OUTER JOIN subjects                                                    # Rebecca is null
+    ON teaching.subjectsTaught = subjects.subjectID;                         # Convention is to use LEFT OUTER JOINS  
+   
+# Full outer join
+SELECT*FROM teaching                                                         # Includes everything from both tables
+FULL JOIN subjects                                                    
+    ON teaching.subjectsTaught = subjects.subjectID;  
+
+# Cross join - no actual purpose for this data set, just to show how:
+SELECT teacher, theSubject
+FROM teaching, subjects;
+# This pairs every teacher instance in the teaching table with every theSubject instance in the subjects table
+# This generates (1x6) + (1x6) + (1x6) + (1x6) + (1x6) + (1x6) + (1x6) + (1x6) + (1x6) + (1x6) = 60 entries
