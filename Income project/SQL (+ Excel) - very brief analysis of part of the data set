@@ -5,9 +5,10 @@
 # Original source - https://www.kaggle.com/uciml/adult-census-income?select=adult.csv
 
 
-# The dataset is large and would take 10+ hours to import into SQL
+# The whole dataset is too large to import into MySQL
 # I filtered in Excel by occupation and gender and selected three tables to investigate - with more time I could analyse all the data
 # With several tables the data is more manageable
+# NB I will put up a separate upload querying incomes >50k
 
 
 CREATE DATABASE employment;
@@ -79,7 +80,3 @@ WHERE `native.country` != "United-States";                             # NB use 
 SELECT*FROM machineopfemale
 WHERE `native.country` LIKE "C%"; 
 # 19 entries
-
-
-# End of SQL analysis - there is a lot more that could be done if all the data was imported, but this takes a very long time.
-# It's arguably better to use pivot tables in Excel unless you want to wait for the 30,000+ rows to import to SQL.
