@@ -1,0 +1,85 @@
+# UCI Adult Census Income (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - UCI Machine Learning
+# Original source - https://www.kaggle.com/uciml/adult-census-income?select=adult.csv
+
+
+# The dataset is large and would take 10+ hours to import into SQL
+# I filtered in Excel by occupation and gender and selected three tables to investigate - with more time I could analyse all the data
+# With several tables the data is more manageable
+
+
+CREATE DATABASE employment;
+USE employment;  
+# Now insert filtered tables with import wizard
+
+
+# Import one - all armed forces occupations (all male)
+SELECT*FROM thearmedForces;
+
+ALTER TABLE thearmedForces 
+RENAME COLUMN `ï»¿age` TO age;                                                           # Rename age column as this imported strangely
+
+
+# Import two - farmer/fisher occupations AND female 
+SELECT*FROM farmerfisherfemale;
+
+ALTER TABLE farmerfisherfemale 
+RENAME COLUMN `ï»¿age` TO age;
+
+
+# Import three - Machine-op-inspc occupation AND female 
+SELECT*FROM machineopfemale;
+
+ALTER TABLE machineopfemale  
+RENAME COLUMN `ï»¿age` TO age;
+
+
+# Start with just looking at the armed forces table (example queries):
+
+# Salaries >50k in the armed forces (this is actual visible without really needing the query):
+SELECT*FROM thearmedForces
+WHERE income = ">50k"; 
+# Just one entry (46yr old male)
+
+# Education that is not HS?
+SELECT*FROM thearmedForces
+WHERE education != "HS-grad";
+# Returns 5 entries
+
+
+# Example queries on farmer/fisher occupations AND female table (import two)
+
+# Female farmers/fishers that have a salary >50k?
+SELECT*FROM farmerfisherfemale
+WHERE income = ">50k";
+# This returns two people
+
+# Highly educated and young female farmer/fishers?
+SELECT*FROM farmerfisherfemale
+WHERE `education.num` >= 10                                            # NB physically right click and copy field name from table and surround with ` ` to prevent SQL firing errors
+AND age <= 30;
+# This returned 10 people
+
+
+# Example queries on machineopfemale table (import three)
+
+# Salaries >50k for the machine op occupation (female)?
+SELECT*FROM machineopfemale
+WHERE income = ">50k";
+# 20 people
+
+# Native country not US? 
+SELECT*FROM machineopfemale
+WHERE `native.country` != "United-States";                             # NB use ` ` again - otherwise error from SQL
+# This returned 111 entries, so make query more specific
+
+# Native country that starts with the letter 'C'
+SELECT*FROM machineopfemale
+WHERE `native.country` LIKE "C%"; 
+# 19 entries
+
+
+# End of SQL analysis - there is a lot more that could be done if all the data was imported, but this takes a very long time.
+# It's arguably better to use pivot tables in Excel unless you want to wait for the 30,000+ rows to import to SQL.
