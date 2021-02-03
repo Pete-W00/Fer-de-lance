@@ -1,0 +1,11 @@
+# UCI Adult Census Income (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - UCI Machine Learning
+# Original source - https://www.kaggle.com/uciml/adult-census-income?select=adult.csv
+
+
+# Small project on this data set with three parts:
+# (1) Excel + SQL
+# (2) Python
+# (3) Power BI
