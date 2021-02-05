@@ -1,0 +1,123 @@
+# UCI Adult Census Income (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - UCI Machine Learning
+# Original source - https://www.kaggle.com/uciml/adult-census-income?select=adult.csv
+
+# Analysis of incomes >50k
+
+CREATE DATABASE employment;
+USE employment;  
+
+SELECT*FROM over50k;                       # First observation - 7841 rows from 32561 have salaries >50k
+
+ALTER TABLE over50k                        # age column imported weirdly 
+RENAME COLUMN `ï»¿age` TO age;
+
+
+# Example queries
+
+# Anyone under 25 who earns >50k?
+SELECT age
+FROM over50k
+WHERE age < 25;
+# 61 people! From which two are only 19 years old!
+# Find out more about the two youn people:
+SELECT*FROM over50k
+WHERE age = 19;
+# One man and one woman, both from the US.
+
+
+# What education types will likely generate an income that is greater than 50k?
+SELECT education, COUNT(education) AS "Education types count"
+FROM over50k
+GROUP BY education                        
+ORDER BY count(education) DESC;
+# There are 2221 with a Bachelors degree who earn >50k
+# HS-grad accounts for 1675 of those earning >50k
+
+
+# Next logical question - which occupations generate a salary >50k?
+SELECT occupation, COUNT(occupation) AS "Occupation types count"
+FROM over50k
+GROUP BY occupation                        
+ORDER BY count(occupation) DESC;
+# The majority are Exec/managerial (1968) and Prof-speciality (1859)
+# 191 are from unknown occupations - I haven't cleaned the data fully yet
+
+
+# What are the hours per week required to earn a salary >50k?
+SELECT `hours.per.week`, COUNT(`hours.per.week`) AS "Hours.per.week count"
+FROM over50k
+GROUP BY `hours.per.week`                        
+ORDER BY COUNT(`hours.per.week`) DESC;
+# 40hrs is the standard working week to earn >50k
+# There is one person who works 3hrs per week and earns over 50k!
+
+
+# What countries are represented here?
+SELECT DISTINCT `native.country`
+FROM over50k;
+# Natives from 39 + ? are represented in this dataset. Counts:
+SELECT `native.country`, COUNT(`native.country`) AS "Native country count"
+FROM over50k
+GROUP BY `native.country`                        
+ORDER BY count(`native.country`) DESC;
+# As expected, most people are from the US (7171), then ? (146), then the Philippines (61)
+# Say if we wanted to look at the Italian group more closely:
+SELECT*FROM over50k
+WHERE `native.country` = "Italy";
+# And even more specific - female Italians:
+SELECT*FROM over50k
+WHERE `native.country` = "Italy"
+AND sex = "Female";
+# 5 people, all working >= 40hrs per week
+
+
+# How many people have an average education who are earning >50k?
+# Education range is 2-16 so let's say the average is 7-11:
+SELECT*FROM over50k
+WHERE `education.num`
+BETWEEN 7 AND 11;
+# This band represents just under half the data set (3516)
+# One can easily look at the education extremes instead:
+SELECT*FROM over50k
+WHERE `education.num` = 16;
+# 306 people
+SELECT*FROM over50k
+WHERE `education.num` = 2;
+# 6 people
+
+
+# Say if you wanted men with an "above average" education who are aged under 30 and never married:
+SELECT AVG(`education.num`) AS mean_education
+FROM over50k;                                           
+# Above average education is > 11.6 (e.g. >= 12 for this data set)
+SELECT*FROM over50k
+WHERE sex = "Male"
+AND `education.num` >= 12
+AND age < 30
+AND `marital.status` = "Never-married";
+# This returned 44 people surprisingly - I thought it was quite specific criteria. 
+# Add the critera that they have to work in sales:
+SELECT*FROM over50k
+WHERE sex = "Male"
+AND `education.num` >= 12
+AND age < 30
+AND `marital.status` = "Never-married"
+AND occupation = "Sales";
+# Reduces to 9 people
+
+
+# Finally, a count of people from Europe?
+SELECT DISTINCT `native.country`
+FROM over50k;
+# European countries: Greece, Germany, Italy, England, Ireland, Poland, France, Hungary, Scotland
+# NB one of the native countries is just listed as 'South' ..? I am assuming that it's not Europe
+SELECT `native.country`, COUNT(`native.country`) AS "EuropeCount"
+FROM over50k
+WHERE `native.country` 
+IN ("Greece", "Germany", "Italy", "England", "Ireland", "Poland", "France", "Hungary", "Scotland")
+GROUP BY `native.country`
+ORDER BY COUNT(`native.country`) DESC;
+# Top three are: Germans (44), English (30) and Italians (25)
