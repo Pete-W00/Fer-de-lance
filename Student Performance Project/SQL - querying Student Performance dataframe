@@ -1,0 +1,179 @@
+# Students Performance in Exams (dataset from Kaggle)
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - Jakki Seshapanpu
+# Original source - https://www.kaggle.com/spscientist/students-performance-in-exams
+
+CREATE DATABASE SP;
+USE SP;  
+
+CREATE TABLE studentPerformance(
+gender ENUM('female', 'male') NOT NULL,
+raceEthnicity ENUM('group A', 'group B', 'group C', 'group D', 'group E') NOT NULL,
+parentalEducation VARCHAR(50) NULL,
+lunch ENUM('standard', 'free/reduced') NOT NULL,
+testPreparationCourse ENUM('none', 'completed') NOT NULL,
+mathScore TINYINT NOT NULL,
+readingScore TINYINT NOT NULL,
+writingScore TINYINT NOT NULL);
+
+SELECT*FROM studentPerformance;
+
+
+# Students with poor maths scores?
+SELECT*FROM studentPerformance
+WHERE mathScore <= 30;
+# 16 students have a maths score <= 30
+# Parental education for this group is mainly high school or college
+# Lunch is mainly free/reduced for this group
+# Only 2/16 took the test preparation course for this group
+# Reading skills for this group were all <= 44
+# Writing skills for this group were all <= 47
+
+
+# Students who have a reading and writing score >= 90 (I know some exist from the excel analysis)
+SELECT*FROM studentPerformance
+WHERE readingScore >= 90
+AND writingScore >= 90;
+# 54 students with reading and writing score >= 90
+# For this group the maths score is >= 77
+# Three students have perfect scores (100, 100, 100)
+# We can query this query by looking at the parental education:
+SELECT parentalEducation, COUNT(parentalEducation) AS "Parental Education Count"
+FROM studentPerformance
+WHERE readingScore >= 90
+AND writingScore >= 90
+GROUP BY parentalEducation
+ORDER BY Count(parentalEducation) DESC;
+# Mostly degree level education
+SELECT ((15 + 13 + 9)/54)*100;                       # 68.5% (1dp) with degree level education
+SELECT (9/54)*100;                                   # 16.7% (1dp) with master's degree education
+SELECT ((5 + 2)/54)*100;                             # 13.0% (1dp) with high school education
+# Fair conclusion: the majority of high scoring students have parents with degree level education. 
+
+
+# Are there any students with good reading and writing tests who performed less well in the maths test?
+SELECT*FROM studentPerformance
+WHERE readingScore >= 70
+AND writingScore >= 70
+AND mathScore < 50;
+# One student scored 73 in reading, 70 in writing and 45 in the maths test. A difference of 25.
+# Conversely, where there any students who were good at maths, but did not perform as well in the reading and writing tests? 
+SELECT*FROM studentPerformance
+WHERE readingScore < 50
+AND writingScore < 50
+AND mathScore >= 70;
+# None returned
+SELECT*FROM studentPerformance
+WHERE readingScore < 50
+AND writingScore < 50
+AND mathScore >= 60;
+# Four students scored reading and writing less than 50, but maths exceeding 60
+
+
+# Which test was the most difficult?
+SELECT AVG(mathScore) AS mean_maths_score
+FROM studentPerformance;                                      # 66 (nearest integer)
+SELECT AVG(readingScore) AS mean_reading_score                
+FROM studentPerformance;                                      # 69 (nearest integer)
+SELECT AVG(writingScore) AS mean_writing_score                
+FROM studentPerformance;                                      # 68 (nearest integer)
+# The maths test was the most difficult
+
+
+# Did females generally outperform males? (NB from excel, female = 52% and male = 48%)
+SELECT mathScore, AVG(mathScore)
+FROM studentPerformance
+WHERE gender = "female";                  
+# Average female maths score = 64 (nearest integer)
+SELECT mathScore, AVG(mathScore)
+FROM studentPerformance
+WHERE gender = "male";
+# Average male maths score = 69 (nearest integer)
+# Males outperformed females in the maths test 
+SELECT readingScore, AVG(readingScore)
+FROM studentPerformance
+WHERE gender = "female";                  
+# Average female reading score = 73 (nearest integer)
+SELECT readingScore, AVG(readingScore)
+FROM studentPerformance
+WHERE gender = "male";
+# Average male reading score = 65 (nearest integer)
+# Females outperformed males in the reading test
+SELECT writingScore, AVG(writingScore)
+FROM studentPerformance
+WHERE gender = "female";                  
+# Average female reading score = 72 (nearest integer)
+SELECT writingScore, AVG(writingScore)
+FROM studentPerformance
+WHERE gender = "male";
+# Average male reading score = 63 (nearest integer)
+# Females outperformed males in the writing test
+# ***Overall males performed better in the maths test, but females performed better in the reading and writing tests***
+
+
+# How many people took the test preparation course (tpc)?
+SELECT*FROM studentPerformance
+WHERE testPreparationCourse = "completed";
+# 358/1000
+# How many males took the tpc?
+SELECT*FROM studentPerformance
+WHERE testPreparationCourse = "completed"
+AND gender = "male";
+SELECT*FROM studentPerformance
+WHERE gender = "male";
+SELECT (174/582)*100;
+# 174/482 males took the tpc (e.g. 29.9% 1d.p.)
+# How many females took the tpc?
+SELECT*FROM studentPerformance
+WHERE testPreparationCourse = "completed"
+AND gender = "female";
+SELECT*FROM studentPerformance
+WHERE gender = "female";
+SELECT (184/518)*100;
+# 184/518 females took the test (e.g. 35.5% 1d.p.)
+
+
+# How many students scored < 50 on any individual test? How many of these were on free/reduced lunch?
+SELECT*FROM studentPerformance
+WHERE mathScore < 50
+OR readingScore < 50
+OR writingScore < 50;
+# 188/1000 scored < 50 on at least one test
+# ***I EXPORTED THE RESULTING TABLE TO CSV, SO NOW I CAN RUN MORE QUERIES ON IT (WITHOUT HAVING TO WORRY ABOUT SUBQUERIES)***
+# REIMPORT THE TABLE USING THE WIZARD AND THEN QUERY AGAIN (studentperformancelow)
+SELECT*FROM studentperformancelow;
+# Ok, so now we can query the lunches for the low performing students:
+SELECT lunch, COUNT(lunch)
+FROM studentperformancelow
+GROUP BY lunch
+ORDER BY COUNT(lunch) DESC;
+SELECT (111/188)*100;
+SELECT (77/188)*100;
+# So of the 188 low performing students, 111 (59% 1dp) had free/reduced lunch and 77 (41% 1dp) had standard lunch
+# What is the male/female distribution of this low performing group?
+SELECT gender, COUNT(gender)
+FROM studentperformancelow
+GROUP BY gender;
+SELECT (99/188)*100;
+SELECT (89/188)*100;
+# So for the lower performers there are 99 males (52.7%) and 89 females (47.3%)
+# What is the race/ethnicity distribution of this low performing group?
+SELECT raceEthnicity, COUNT(raceEthnicity)
+FROM studentperformancelow
+GROUP BY raceEthnicity;
+# Group A, B, C, D, E --> 30, 43, 42, 59, 14
+# Similar question - parental education distribution for the low performing group?
+SELECT parentalEducation, COUNT(parentalEducation)
+FROM studentperformancelow
+GROUP BY parentalEducation;
+# associate's degree - 33
+# some college - 38
+# high school - 49
+# some high school - 46
+# master's degree - 6
+# bachelor's degree - 16
+# Lastly, the crucial question, of the low performing students, how many took the tpc?
+SELECT testPreparationCourse, COUNT(testPreparationCourse)
+FROM studentperformancelow
+GROUP BY testPreparationCourse;
+# Yes so only 36/188 completed the tpc which was expected!
