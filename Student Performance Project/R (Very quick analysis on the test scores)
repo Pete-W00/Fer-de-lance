@@ -1,0 +1,36 @@
+# Students Performance in Exams (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - Jakki Seshapanpu
+# Original source - https://www.kaggle.com/spscientist/students-performance-in-exams
+
+
+# This code is all R - looking at the test scores (visualisations from this code have also been uploaded)
+# This was some quick and simple analysis I did (about 15 minutes)
+
+
+
+> df = read.csv(file.choose())           # The complete downloaded dataframe
+> head(df, 10)
+
+> summary(df$math.score)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   57.00   66.00   66.09   77.00  100.00
+   
+> boxplot(df$math.score, ylab = "Maths scores", main = "Maths test", col = "Green")
+
+> summary(df$reading.score)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  17.00   59.00   70.00   69.17   79.00  100.00
+  
+> summary(df$writing.score)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  10.00   57.75   69.00   68.05   79.00  100.00
+
+> boxplot(df$math.score, df$reading.score, df$writing.score, ylab = "Student scores", main = "Student tests", names = c("Maths","Reading","Writing"), col = c("Green", "Blue", "Yellow"))
+
+> v = c(1,1,1,1,1,1,1,1,1,1)            # Define v took get the full colour range on the histogram (the chart is quite loud with rainbow)    
+
+> hist(df$math.score, col = rainbow(length(v)), xlab = "Maths scores", main = "Maths test")
+> hist(df$reading.score, col = rainbow(length(v)), xlab = "Reading scores", main = "Reading test")
+> hist(df$writing.score, col = rainbow(length(v)), xlab = "Writing scores", main = "Writing test")
