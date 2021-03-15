@@ -29,7 +29,7 @@
 
 > boxplot(df$math.score, df$reading.score, df$writing.score, ylab = "Student scores", main = "Student tests", names = c("Maths","Reading","Writing"), col = c("Green", "Blue", "Yellow"))
 
-> v = c(1,1,1,1,1,1,1,1,1,1)            # Define v took get the full colour range on the histogram (the chart is quite loud with rainbow)    
+> v = c(1,1,1,1,1,1,1,1,1,1)            # Define v to get the full colour range on the histogram (the chart is quite loud with rainbow)    
 
 > hist(df$math.score, col = rainbow(length(v)), xlab = "Maths scores", main = "Maths test")
 > hist(df$reading.score, col = rainbow(length(v)), xlab = "Reading scores", main = "Reading test")
