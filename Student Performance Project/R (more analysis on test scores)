@@ -1,0 +1,75 @@
+# Students Performance in Exams (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - Jakki Seshapanpu
+# Original source - https://www.kaggle.com/spscientist/students-performance-in-exams
+
+
+# This code is all R - looking at the test scores (visualisations from this code have also been uploaded)
+
+
+> df = read.csv(file.choose())                            # Choose downloaded csv file
+> head(df, 10)
+
+> df2 = df[df$math.score <= 50, ]
+> df3 = df2[df2$reading.score <= 50, ]
+> df4 = df3[df3$writing.score <= 50, ]
+> df4                                                     # df4 represents students who scored <= 50 on all three tests
+
+> v = c(1,1,1,1,1)
+> v2 = c(1,1,1,1,1,1,1)
+> v3 = c(1,1,1,1,1,1,1,1)
+
+> hist(df4$math.score, col = rainbow(length(v)), xlab = "Maths scores", main = "Maths test (students <=50 in all three tests)")
+> hist(df4$reading.score, col = rainbow(length(v2)), xlab = "Reading scores", main = "Reading test (students <=50 in all three tests)")
+> hist(df4$writing.score, col = rainbow(length(v3)), xlab = "Writing scores", main = "Writing test (students <=50 in all three tests)")
+
+> dim(df4)
+[1] 62  8                            # df4. 62 rows, 8 columns
+
+> # Students scored < 10 on the maths test (this does not happen for the other tests)
+> for(i in df4$math.score){if(i<10)print(i)}
+[1] 0
+[1] 8
+> # Students scored 0 and 8 in maths!
+
+> # Make a bar chart to see how many students did the test preparation course who scored <= 50 on all three tests
+
+> for(i in df4$test.preparation.course){if(i=="completed")print(i)}            # It's clear that not many students did the test prep course (10/62)
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+[1] "completed"
+
+> completed = df4[df4$test.preparation.course == "completed", ]
+> none = df4[df4$test.preparation.course == "none", ]
+
+> dim(completed)
+[1] 10  8
+
+> dim(none)
+[1] 52  8
+
+> dim(df4)
+[1] 62  8
+
+> vector1 = c(10, 52)
+> vector2 = c("Completed", "Not completed")
+> pie(vector1, vector2)                                                            # The pie chart is not very useful, use bar chart
+
+> x = df4$test.preparation.course
+> table(x)                                                                         # Make table first, otherwise the plot has no labels
+
+x
+completed      none 
+       10        52
+       
+> colour = c(1,1)                                                                  # Define this vector to use 'rainbow'
+
+> barplot(table(x), col = rainbow(length(colour)), xlab = "Test prep course", ylab = "Frequency", main = "Was test prep course done?")
