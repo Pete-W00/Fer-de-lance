@@ -1,0 +1,152 @@
+# Students Performance in Exams (dataset from Kaggle)
+
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - Jakki Seshapanpu
+# Original source - https://www.kaggle.com/spscientist/students-performance-in-exams
+
+
+> df = read.csv(file.choose())                            # Choose downloaded csv file
+
+> # In this code I am going to look at if gender and lunch affect the test scores
+> # Subset by gender then lunch, then calculate the mean of each test score
+
+
+> female = df[df$gender == "female", ]
+> male = df[df$gender == "male", ]
+
+
+> femaleStandardLunch = female[female$lunch == "standard", ]
+> femaleFreeLunch = female[female$lunch == "free/reduced", ]
+
+
+> maleStandardLunch = male[male$lunch == "standard", ]
+> maleFreeLunch = male[male$lunch == "free/reduced", ]
+
+
+> # Check that no elements went missing:
+> dim(female)
+[1] 518   8
+> dim(femaleStandardLunch)
+[1] 329   8
+> dim(femaleFreeLunch)
+[1] 189   8
+> dim(male)
+[1] 482   8
+> dim(maleStandardLunch)
+[1] 316   8
+> dim(maleFreeLunch)
+[1] 166   8
+
+
+> summary(female)
+    gender    race.ethnicity     parental.level.of.education          lunch    
+ female:518   group A: 36    associate's degree:116          free/reduced:189  
+ male  :  0   group B:104    bachelor's degree : 63          standard    :329  
+              group C:180    high school       : 94                            
+              group D:129    master's degree   : 36                            
+              group E: 69    some college      :118                            
+                             some high school  : 91                            
+ test.preparation.course   math.score     reading.score    writing.score   
+ completed:184           Min.   :  0.00   Min.   : 17.00   Min.   : 10.00  
+ none     :334           1st Qu.: 54.00   1st Qu.: 63.25   1st Qu.: 64.00  
+                         Median : 65.00   Median : 73.00   Median : 74.00  
+                         Mean   : 63.63   Mean   : 72.61   Mean   : 72.47  
+                         3rd Qu.: 74.00   3rd Qu.: 83.00   3rd Qu.: 82.00  
+                         Max.   :100.00   Max.   :100.00   Max.   :100.00  
+> summary(male)
+    gender    race.ethnicity     parental.level.of.education          lunch    
+ female:  0   group A: 53    associate's degree:106          free/reduced:166  
+ male  :482   group B: 86    bachelor's degree : 55          standard    :316  
+              group C:139    high school       :102                            
+              group D:133    master's degree   : 23                            
+              group E: 71    some college      :108                            
+                             some high school  : 88                            
+ test.preparation.course   math.score     reading.score    writing.score   
+ completed:174           Min.   : 27.00   Min.   : 23.00   Min.   : 15.00  
+ none     :308           1st Qu.: 59.00   1st Qu.: 56.00   1st Qu.: 53.00  
+                         Median : 69.00   Median : 66.00   Median : 64.00  
+                         Mean   : 68.73   Mean   : 65.47   Mean   : 63.31  
+                         3rd Qu.: 79.00   3rd Qu.: 75.00   3rd Qu.: 73.75  
+                         Max.   :100.00   Max.   :100.00   Max.   :100.00  
+> summary(femaleStandardLunch)
+    gender    race.ethnicity     parental.level.of.education          lunch    
+ female:329   group A: 22    associate's degree:80           free/reduced:  0  
+ male  :  0   group B: 65    bachelor's degree :41           standard    :329  
+              group C:118    high school       :57                             
+              group D: 78    master's degree   :22                             
+              group E: 46    some college      :74                             
+                             some high school  :55                             
+ test.preparation.course   math.score     reading.score    writing.score   
+ completed:114           Min.   : 19.00   Min.   : 29.00   Min.   : 30.00  
+ none     :215           1st Qu.: 59.00   1st Qu.: 67.00   1st Qu.: 68.00  
+                         Median : 67.00   Median : 75.00   Median : 76.00  
+                         Mean   : 68.12   Mean   : 75.61   Mean   : 75.93  
+                         3rd Qu.: 77.00   3rd Qu.: 85.00   3rd Qu.: 84.00  
+                         Max.   :100.00   Max.   :100.00   Max.   :100.00  
+> summary(femaleFreeLunch)
+    gender    race.ethnicity     parental.level.of.education          lunch    
+ female:189   group A:14     associate's degree:36           free/reduced:189  
+ male  :  0   group B:39     bachelor's degree :22           standard    :  0  
+              group C:62     high school       :37                             
+              group D:51     master's degree   :14                             
+              group E:23     some college      :44                             
+                             some high school  :36                             
+ test.preparation.course   math.score    reading.score    writing.score   
+ completed: 70           Min.   : 0.00   Min.   : 17.00   Min.   : 10.00  
+ none     :119           1st Qu.:46.00   1st Qu.: 58.00   1st Qu.: 57.00  
+                         Median :57.00   Median : 67.00   Median : 68.00  
+                         Mean   :55.81   Mean   : 67.39   Mean   : 66.44  
+                         3rd Qu.:67.00   3rd Qu.: 78.00   3rd Qu.: 78.00  
+                         Max.   :93.00   Max.   :100.00   Max.   :100.00  
+> summary(maleStandardLunch)
+    gender    race.ethnicity     parental.level.of.education          lunch    
+ female:  0   group A:31     associate's degree:65           free/reduced:  0  
+ male  :316   group B:56     bachelor's degree :33           standard    :316  
+              group C:87     high school       :69                             
+              group D:89     master's degree   :13                             
+              group E:53     some college      :73                             
+                             some high school  :63                             
+ test.preparation.course   math.score     reading.score    writing.score   
+ completed:113           Min.   : 30.00   Min.   : 26.00   Min.   : 22.00  
+ none     :203           1st Qu.: 62.00   1st Qu.: 57.75   1st Qu.: 55.75  
+                         Median : 72.00   Median : 67.50   Median : 67.00  
+                         Mean   : 72.02   Mean   : 67.54   Mean   : 65.51  
+                         3rd Qu.: 82.00   3rd Qu.: 78.00   3rd Qu.: 75.25  
+                         Max.   :100.00   Max.   :100.00   Max.   :100.00  
+> summary(maleFreeLunch)
+    gender    race.ethnicity     parental.level.of.education          lunch    
+ female:  0   group A:22     associate's degree:41           free/reduced:166  
+ male  :166   group B:30     bachelor's degree :22           standard    :  0  
+              group C:52     high school       :33                             
+              group D:44     master's degree   :10                             
+              group E:18     some college      :35                             
+                             some high school  :25                             
+ test.preparation.course   math.score     reading.score    writing.score  
+ completed: 61           Min.   : 27.00   Min.   : 23.00   Min.   :15.00  
+ none     :105           1st Qu.: 53.00   1st Qu.: 53.25   1st Qu.:51.00  
+                         Median : 62.00   Median : 61.00   Median :59.00  
+                         Mean   : 62.46   Mean   : 61.54   Mean   :59.13  
+                         3rd Qu.: 73.00   3rd Qu.: 71.00   3rd Qu.:69.00  
+                         Max.   :100.00   Max.   :100.00   Max.   :93.00  
+
+
+> # female vs male - main points:
+> # (1) parental.level.of.education and lunch were similar 
+> # (2) test prep similar
+> # (3) males better at maths, but females better at reading and writing
+> # (4) male maths score minimum is 27 whereas female minimum is 0
+
+
+> # female standard lunch vs female free lunch
+> # (1) females on standard lunch performed significantly better, on average, across all three tests
+> # (2) females on free lunch proportionally actually did more test prep, e.g. "completed" (34.7% standard vs 37.0% free)
+
+
+> # male standard lunch vs male free lunch
+> # (1) males on standard lunch performed significantly better, on average, across all three tests
+> # (2) again, proportionally, male free lunch did more test prep than male standard lunch (35.7% standard vs 36.7% free)
+
+
+> # best maths score average - male (standard lunch) - 72.02
+> # best reading score average - female (standard lunch) - 75.61
+> # best writing score average - female (standard lunch) - 75.93
