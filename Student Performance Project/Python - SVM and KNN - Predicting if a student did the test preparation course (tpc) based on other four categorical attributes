@@ -1,0 +1,120 @@
+# Students Performance in Exams (dataset from Kaggle)
+# I do not own this dataset - I am simply doing some analysis on it, no copyright intended. Citation: 
+# Author - Jakki Seshapanpu
+# Original source - https://www.kaggle.com/spscientist/students-performance-in-exams
+
+
+# Predicting if a student did the test preparation course (tpc) based on other four attributes - using SVM and KNN
+
+
+import pandas
+from pandas import read_csv, concat, DataFrame
+
+import sklearn
+from sklearn.svm import SVC
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, confusion_matrix, plot_confusion_matrix
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
+
+from matplotlib import pyplot as plt
+
+
+
+df = read_csv("StudentsPerformance.csv")
+
+df
+
+df.isnull().sum() 
+
+df2 = df[["gender", "race/ethnicity", "parental level of education", "lunch", "test preparation course"]]
+
+df2
+
+# The target variable is not even - sample 300 of each - e.g. 300 completed and 300 'none'
+
+completed = df2[df2["test preparation course"] == "completed"]
+none = df2[df2["test preparation course"] == "none"]
+
+completed_sample = completed.sample(n = 300)
+none_sample = none.sample(n = 300)
+
+df3 = concat([completed_sample, none_sample])              
+df3 = df3.reset_index(drop = True)
+
+print(df3["test preparation course"].value_counts())                           # tpc, none = 300, completed = 300
+
+df3
+
+df4 = df3.apply(LabelEncoder().fit_transform)                  
+df4
+
+
+X = df4.drop("test preparation course", axis = 1)      
+y = df4["test preparation course"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.20, random_state = 42)
+
+
+svm = SVC()
+svm.fit(X_train, y_train)
+accuracy_score(y_test, svm.predict(X_test))                                   # This accuracy is low (45.8%)
+
+cm = confusion_matrix(y_test, svm.predict(X_test))
+cm
+
+tpc = ["completed", "none"]
+
+plot_confusion_matrix(svm, X_test, y_test, display_labels = tpc)
+plt.title("svm = SVC()")
+plt.show()
+
+
+parameters = {"C": [0.01, 0.1, 1, 10, 100], "kernel": ["linear", "rbf"]}
+
+svm_model = GridSearchCV(svm, parameters, cv = 3)
+
+svm_model.fit(X_test, y_test)   
+
+cvresults = DataFrame(svm_model.cv_results_)
+cvresults    
+
+# Optimality at {'C': 10, 'kernel': 'rbf'}
+
+svm2 = SVC(C = 10, kernel = "rbf")
+svm2.fit(X_train, y_train)
+accuracy_score(y_test, svm2.predict(X_test))                                 # Accuracy still low (45%) - not enough data to improve model
+
+plot_confusion_matrix(svm2, X_test, y_test, display_labels = tpc)
+plt.title("svm2 = SVC(C = 10, kernel = rbf)")
+plt.show()
+
+# The only difference here is that the new model predicts more 'completed'
+
+
+
+KNN = KNeighborsClassifier()
+KNN.fit(X_train, y_train)
+accuracy_score(y_test, KNN.predict(X_test))                                 # Accuracy at 54.2%
+
+plot_confusion_matrix(KNN, X_test, y_test, display_labels = tpc)
+plt.title("KNN = KNeighborsClassifier()")
+plt.show()
+
+# Use cross-validation to find the best value of k
+
+for k in range(1, 21):
+    cross_validation_score = cross_val_score(KNeighborsClassifier(n_neighbors = k), X_test, y_test, cv = 3)
+    print(cross_validation_score.mean())
+    
+# k = 10 is optimal    
+
+KNN2 = KNeighborsClassifier(n_neighbors = 10)
+KNN2.fit(X_train, y_train)
+accuracy_score(y_test, KNN2.predict(X_test))                               # Accuracy at 50.8%
+
+plot_confusion_matrix(KNN2, X_test, y_test, display_labels = tpc)
+plt.title("KNN2 = KNeighborsClassifier(n_neighbors = 10)")
+plt.show()
+
+# Models are all still quite weak. Will try some more shortly. Best for this code was a default KNN (which predicted the least 'completed' - this is being misclassified).
