@@ -1,0 +1,123 @@
+# Writing Functions 
+# Seaborn dataset 'tips' used for some of the functions
+
+
+import random
+
+import seaborn as sns
+sns.get_dataset_names()
+
+df = sns.load_dataset("tips")
+df
+
+
+# (1) Basic maths function (equation of motion v = u + at)
+
+def function(u, a, t):
+    return u + a*t
+
+
+v1 = function(2, 3, 7)
+v2 = function(1, 5, 5)
+print(v1)
+print(v2)
+
+
+# (2) Greetings user function
+
+def ciao(name, age):
+    print("Ciao " + name + ", you're " + age)
+
+    
+user1 = ciao("Mike", "28")
+user2 = ciao("Ed", "38")
+
+
+# (3) Minimum number function
+
+def min_num(a, b, c):
+    if a <= b and a <= c:
+        return a
+    if b <= a and b <= c:
+        return b
+    if c <= a and c <= b:
+        return c
+    
+    
+print(min_num(7, 11, 13))
+print(min_num(17, 11, 13))
+print(min_num(17, 11, 3))
+
+
+# (4) Class for rolling two dice
+
+class TwoDice:
+    def diceroll(self):
+        throw_one = random.randint(1,6)
+        throw_two = random.randint(1,6)
+        return throw_one, throw_two
+
+
+print(TwoDice().diceroll())                            # Use the Class ----> Class_name().function_name()
+
+
+# (5) Pirates dice roll (Based on the great boardgame Pirates)
+
+faces = ["head", "gem", "precious_metal", "singe", "bird", "saber"]
+
+class PirateDice:
+    def roll8(self):
+        throw_one = random.choice(faces)
+        throw_two = random.choice(faces)
+        throw_three = random.choice(faces)
+        throw_four = random.choice(faces)
+        throw_five = random.choice(faces)
+        throw_six = random.choice(faces)
+        throw_seven = random.choice(faces)
+        throw_eight = random.choice(faces)
+        return throw_one, throw_two, throw_three, throw_four, throw_five, throw_six, throw_seven, throw_eight
+    def roll2(self):
+        throw_one = random.choice(faces)
+        throw_two = random.choice(faces)
+        return throw_one, throw_two
+    
+    
+print(PirateDice().roll8())
+print(PirateDice().roll2())
+
+
+# (6) Applying functions to a df
+
+def enlarge100(x):
+    return 100*x
+
+a = df["size"].apply(enlarge100)                    # Uses the function to multiply whole column by 100
+a
+
+# With lambda
+
+f = lambda x: 100*x    
+
+b = df["size"].apply(f)
+b
+
+g = lambda x: 5*x + 2*x*x
+
+outcome = df["size"].apply(g)
+outcome
+
+
+# (7) Basic Class (own data type)
+
+class Student:
+    def __init__(self, name, age, course):                 # Note two dashes on each side of init
+        self.name = name
+        self.age = age
+        self.course = course
+    
+
+
+Jack = Student("J", 23, "Maths")                           # Invented data
+Toby = Student("T", 25, "French")
+
+print(Jack.__dict__)                                       # {'name': 'J', 'age': 23, 'course': 'Maths'}
